@@ -356,6 +356,12 @@ export class ChatView extends ItemView {
                     });
                     this.isStreaming = false;
                     this.updateUIState();
+
+                    // 为最后一条 assistant 消息添加操作按钮
+                    const lastAssistant = this.messageContainer.querySelector('.fleurpilot-assistant:last-of-type') as HTMLElement;
+                    if (lastAssistant) {
+                        this.addMessageActions(lastAssistant);
+                    }
                 },
                 this.isReasoningMode
                     ? (reasoningChunk) => {
@@ -520,7 +526,146 @@ export class ChatView extends ItemView {
         component.unload();
     }
 
+    // ── 消息操作按钮 ──
+    private addMessageActions(messageEl: HTMLElement): void {
+        const body = messageEl.querySelector('.fleurpilot-message-body');
+        if (!body) return;
+
+        // 检查是否已有操作按钮
+        if (body.querySelector('.fleurpilot-message-actions')) return;
+
+        const actionsRow = body.createDiv({ cls: 'fleurpilot-message-actions' });
+
+        // 保存笔记
+        const saveBtn = actionsRow.createEl('button', {
+            cls: 'fleurpilot-action-btn',
+            attr: { 'aria-label': this.$('chat.actions.saveNote') },
+        });
+        setIcon(saveBtn, 'file-plus');
+        saveBtn.addEventListener('click', () => { void this.saveConversationAsNote(); });
+
+        // 复制
+        const copyBtn = actionsRow.createEl('button', {
+            cls: 'fleurpilot-action-btn',
+            attr: { 'aria-label': this.$('chat.actions.copy') },
+        });
+        setIcon(copyBtn, 'copy');
+        copyBtn.addEventListener('click', () => { void this.copyLastAssistantMessage(); });
+
+        // 重新生成
+        const regenerateBtn = actionsRow.createEl('button', {
+            cls: 'fleurpilot-action-btn',
+            attr: { 'aria-label': this.$('chat.actions.regenerate') },
+        });
+        setIcon(regenerateBtn, 'refresh-cw');
+        regenerateBtn.addEventListener('click', () => { void this.regenerateLastMessage(); });
+    }
+
+    private async saveConversationAsNote(): Promise<void> {
+        if (this.messages.length === 0) {
+            new Notice(this.$('chat.notice.noMessages'));
+            return;
+        }
+
+        const folderPath = this.plugin.settings.chatHistoryFolder || 'FleurPilot';
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
+
+        // 取第一条用户消息的前 20 个字符作为标题
+        const firstUser = this.messages.find(m => m.role === 'user');
+        const title = firstUser
+            ? `${firstUser.content.slice(0, 30).replace(/[\\/:*?"<>|]/g, '').trim()} ${timestamp}`
+            : `Chat ${timestamp}`;
+
+        const timeLocale = getTimeLocale(this.plugin.settings.language);
+        const toTime = (ts: number) =>
+            new Date(ts).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' });
+
+        let content = `# ${title}\n\n`;
+        for (const msg of this.messages) {
+            const role = msg.role === 'user' ? this.$('chat.roleUser') : this.$('chat.roleAssistant');
+            content += `## ${role} (${toTime(msg.timestamp)})\n\n${msg.content}\n\n---\n\n`;
+        }
+
+        // 确保文件夹存在
+        const folder = this.app.vault.getAbstractFileByPath(folderPath);
+        if (!folder) {
+            try {
+                await this.app.vault.createFolder(folderPath);
+            } catch { /* folder may already exist */ }
+        }
+
+        let filePath = `${folderPath}/${title}.md`;
+        // 防止重名
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(filePath)) {
+            filePath = `${folderPath}/${title} (${counter}).md`;
+            counter++;
+        }
+
+        await this.app.vault.create(filePath, content);
+        new Notice(this.$('chat.notice.saved'));
+    }
+
+    private async copyLastAssistantMessage(): Promise<void> {
+        const lastAssistant = this.findLastMessageByRole('assistant');
+        if (!lastAssistant) return;
+
+        try {
+            await navigator.clipboard.writeText(lastAssistant.content);
+            new Notice(this.$('chat.notice.copied'));
+        } catch {
+            new Notice('Failed to copy');
+        }
+    }
+
+    private async regenerateLastMessage(): Promise<void> {
+        // 找到最后一条用户消息
+        const lastUser = this.findLastMessageByRole('user');
+        if (!lastUser) return;
+
+        // 从 messages 数组中移除最后一条 assistant 消息
+        const lastAssistantIdx = this.messages.findIndex(m => m.role === 'assistant');
+        if (lastAssistantIdx !== -1) {
+            this.messages.splice(lastAssistantIdx, 1);
+        }
+
+        // 从 UI 中移除最后一条 assistant 消息
+        const assistantElements = this.messageContainer.querySelectorAll('.fleurpilot-assistant');
+        if (assistantElements.length > 0) {
+            assistantElements[assistantElements.length - 1].remove();
+        }
+
+        // 从 UI 中移除最后一条 user 消息（会重新发送）
+        const userElements = this.messageContainer.querySelectorAll('.fleurpilot-user');
+        if (userElements.length > 0) {
+            userElements[userElements.length - 1].remove();
+        }
+
+        // 从 messages 数组中移除最后一条 user 消息
+        const lastUserIdx = this.messages.findIndex(m => m.role === 'user' && m.timestamp === lastUser.timestamp);
+        if (lastUserIdx !== -1) {
+            this.messages.splice(lastUserIdx, 1);
+        }
+
+        new Notice(this.$('chat.notice.regenerating'));
+        this.inputArea.value = lastUser.content;
+        this.sendMessage();
+    }
+
+    private findLastMessageByRole(role: 'user' | 'assistant'): ConversationMessage | null {
+        for (let i = this.messages.length - 1; i >= 0; i--) {
+            if (this.messages[i].role === role) return this.messages[i];
+        }
+        return null;
+    }
+
     startNewChat(): void {
+        // 如果开启了自动保存且有关联消息，先保存当前对话
+        if (this.plugin.settings.enableChatHistory && this.messages.length > 0) {
+            void this.saveConversationAsNote();
+        }
         this.messages = [];
         this.messageContainer.empty();
         this.addWelcomeMessage();

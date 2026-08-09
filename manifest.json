@@ -1,6 +1,6 @@
 {
   "id": "fleurpilot",
-  "name": "FleurPilot",
+  "name": "FleurPilot（传彩笔AI）",
   "version": "0.3.0",
   "minAppVersion": "1.4.0",
   "description": "AI writing companion — chat, inline editing, and writing assistance.",

@@ -5,14 +5,15 @@
 
 :root {
     --mb-radius-sm: 6px;
-    --mb-radius-md: 8px;
-    --mb-radius-lg: 12px;
-    --mb-transition: 150ms ease;
+    --mb-radius-md: 10px;
+    --mb-radius-lg: 14px;
+    --mb-radius-xl: 20px;
+    --mb-transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
     --mb-font-size-base: 15px;
     --mb-font-size-sm: 13px;
     --mb-font-size-xs: 12px;
-    --mb-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', sans-serif;
-    --mb-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    --mb-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', sans-serif;
+    --mb-mono: 'SF Mono', 'SF Mono Square', 'Fira Code', 'JetBrains Mono', monospace;
 }
 
 /* ── 主容器 ── */
@@ -29,26 +30,36 @@
 .fleurpilot-toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--background-modifier-border);
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--background-modifier-border);
     background: var(--background-primary);
     flex-shrink: 0;
 }
 
+.fleurpilot-toolbar > .fleurpilot-toolbar-btn:last-child {
+    margin-left: auto;
+}
+
 .fleurpilot-brand {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
     flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.fleurpilot-brand svg {
+    width: 18px;
+    height: 18px;
 }
 
 .fleurpilot-toolbar-btn {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -57,7 +68,7 @@
     border-radius: var(--mb-radius-sm);
     color: var(--text-muted);
     cursor: pointer;
-    transition: background var(--mb-transition), color var(--mb-transition);
+    transition: background var(--mb-transition), color var(--mb-transition), transform 80ms ease;
     padding: 0;
     flex-shrink: 0;
 }
@@ -67,54 +78,63 @@
     color: var(--text-normal);
 }
 
+.fleurpilot-toolbar-btn:active {
+    transform: scale(0.94);
+}
+
+.fleurpilot-toolbar-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
 .fleurpilot-context-btn {
-    font-size: var(--mb-font-size-xs);
-    padding: 3px 6px 3px 8px;
-    border: 1px solid var(--background-modifier-border);
+    font-size: var(--mb-font-size-sm);
+    padding: 5px 12px 5px 10px;
+    border: 0.5px solid var(--background-modifier-border);
     border-radius: 100px;
-    background: var(--background-primary);
+    background: var(--background-secondary);
     color: var(--text-muted);
     cursor: pointer;
     transition: all var(--mb-transition);
     font-family: var(--mb-font);
     flex: 0 1 auto;
     min-width: 0;
-    max-width: 50%;
+    max-width: 46%;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     position: relative;
+    font-weight: 500;
 }
 
 .fleurpilot-context-btn:hover {
-    border-color: var(--interactive-modifier-border-hover);
+    border-color: var(--background-modifier-border-hover);
     color: var(--text-normal);
     background: var(--background-modifier-hover);
 }
 
-.mb-ctx-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    max-width: 110px;
+.fleurpilot-context-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
 }
 
 /* ── 模式切换按钮 ── */
 .fleurpilot-mode-btn {
-    font-size: var(--mb-font-size-xs);
-    padding: 3px 8px;
-    border: 1px solid var(--background-modifier-border);
+    font-size: var(--mb-font-size-sm);
+    padding: 5px 12px 5px 10px;
+    border: 0.5px solid var(--background-modifier-border);
     border-radius: 100px;
-    background: var(--background-primary);
+    background: var(--background-secondary);
     color: var(--text-muted);
     cursor: pointer;
     transition: all var(--mb-transition);
     font-family: var(--mb-font);
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     flex-shrink: 0;
+    font-weight: 500;
 }
 
 .fleurpilot-mode-btn:hover {
@@ -123,8 +143,27 @@
     background: var(--background-modifier-hover);
 }
 
+.fleurpilot-mode-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
 .mb-mode-label {
     white-space: nowrap;
+}
+
+.mb-mode-icon,
+.mb-ctx-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mb-mode-icon svg,
+.mb-ctx-icon svg {
+    width: 13px;
+    height: 13px;
 }
 
 /* ── 推理过程 ── */
@@ -184,7 +223,7 @@
 .fleurpilot-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 18px;
+    padding: 28px 22px;
     scroll-behavior: smooth;
 }
 
@@ -206,40 +245,45 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 40px 20px;
-    animation: mbFadeIn 300ms ease;
+    padding: 48px 28px;
+    animation: mbFadeIn 320ms cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 @keyframes mbFadeIn {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .fleurpilot-welcome-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
     background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
+    border: 0.5px solid var(--background-modifier-border);
     color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
+}
+
+.fleurpilot-welcome-icon svg {
+    width: 26px;
+    height: 26px;
 }
 
 .fleurpilot-welcome h3 {
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 500;
     color: var(--text-normal);
-    margin: 0 0 3px;
-    letter-spacing: -0.2px;
+    margin: 0 0 6px;
+    letter-spacing: -0.3px;
 }
 
 .fleurpilot-welcome-sub {
-    font-size: var(--mb-font-size-sm);
-    color: var(--text-faint);
-    margin: 0 0 22px;
+    font-size: var(--mb-font-size-base);
+    color: var(--text-muted);
+    margin: 0 0 32px;
 }
 
 /* ── 技能按钮 ── */
@@ -247,27 +291,31 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 8px;
-    max-width: 320px;
-    margin: 0 auto 20px;
+    gap: 10px;
+    max-width: 340px;
+    margin: 0 auto 28px;
 }
 
 .fleurpilot-skill-btn {
-    padding: 7px 16px;
+    padding: 8px 16px;
     background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
+    border: 0.5px solid var(--background-modifier-border);
     border-radius: 100px;
     font-size: var(--mb-font-size-sm);
     font-family: var(--mb-font);
-    color: var(--text-muted);
+    color: var(--text-normal);
     cursor: pointer;
     transition: all var(--mb-transition);
+    font-weight: 500;
 }
 
 .fleurpilot-skill-btn:hover {
     background: var(--background-modifier-hover);
-    color: var(--text-normal);
     border-color: var(--background-modifier-border-hover);
+}
+
+.fleurpilot-skill-btn:active {
+    transform: scale(0.96);
 }
 
 .fleurpilot-welcome-hint {
@@ -280,14 +328,14 @@
 .fleurpilot-message {
     display: flex;
     gap: 10px;
-    margin-bottom: 18px;
-    animation: mbFadeIn 200ms ease;
+    margin-bottom: 20px;
+    animation: mbFadeIn 240ms cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .fleurpilot-avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -297,6 +345,11 @@
     margin-top: 2px;
 }
 
+.fleurpilot-avatar svg {
+    width: 14px;
+    height: 14px;
+}
+
 .fleurpilot-user .fleurpilot-avatar {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
@@ -304,7 +357,7 @@
 
 .fleurpilot-assistant .fleurpilot-avatar {
     background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
+    border: 0.5px solid var(--background-modifier-border);
     color: var(--text-muted);
 }
 
@@ -412,12 +465,58 @@
     color: var(--text-muted);
 }
 
+/* ── 消息操作按钮 ── */
+.fleurpilot-message-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 0.5px solid var(--background-modifier-border);
+    opacity: 0;
+    transition: opacity var(--mb-transition);
+}
+
+.fleurpilot-message:hover .fleurpilot-message-actions,
+.fleurpilot-message:focus-within .fleurpilot-message-actions {
+    opacity: 1;
+}
+
+.fleurpilot-action-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--mb-radius-sm);
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: background var(--mb-transition), color var(--mb-transition), transform 80ms ease;
+    padding: 0;
+}
+
+.fleurpilot-action-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.fleurpilot-action-btn:active {
+    transform: scale(0.92);
+}
+
+.fleurpilot-action-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 /* ── 输入区域 ── */
 .fleurpilot-input-container {
     display: flex;
     align-items: flex-end;
-    padding: 10px 12px 12px;
-    border-top: 1px solid var(--background-modifier-border);
+    padding: 12px 16px 16px;
+    border-top: 0.5px solid var(--background-modifier-border);
     background: var(--background-primary);
     gap: 8px;
     flex-shrink: 0;
@@ -426,17 +525,18 @@
 .fleurpilot-input {
     flex: 1;
     resize: none;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 18px;
-    padding: 9px 14px;
-    background: var(--background-primary);
+    border: none;
+    border-radius: var(--mb-radius-xl);
+    padding: 10px 16px;
+    background: var(--background-secondary);
     color: var(--text-normal);
     font-family: var(--mb-font);
     font-size: var(--mb-font-size-base);
     line-height: 1.5;
-    min-height: 40px;
+    min-height: 44px;
     max-height: 170px;
-    transition: border-color var(--mb-transition), box-shadow var(--mb-transition);
+    transition: background var(--mb-transition), box-shadow var(--mb-transition);
+    outline: none;
 }
 
 .fleurpilot-input::placeholder {
@@ -444,14 +544,13 @@
 }
 
 .fleurpilot-input:focus {
-    outline: none;
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 3px rgba(var(--interactive-accent-rgb, 0, 122, 255), 0.08);
+    background: var(--background-primary);
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
 }
 
 .fleurpilot-send-btn {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border: none;
     border-radius: 50%;
     background: var(--interactive-accent);
@@ -460,22 +559,28 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity var(--mb-transition), transform var(--mb-transition);
+    transition: opacity var(--mb-transition), transform 80ms ease, background var(--mb-transition);
     flex-shrink: 0;
+    margin-bottom: 6px;
 }
 
 .fleurpilot-send-btn:hover {
-    opacity: 0.9;
+    opacity: 0.88;
 }
 
 .fleurpilot-send-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.92);
 }
 
 .fleurpilot-send-btn:disabled {
     background: var(--background-modifier-border);
     cursor: not-allowed;
     transform: none;
+}
+
+.fleurpilot-send-btn svg {
+    width: 16px;
+    height: 16px;
 }
 
 .fleurpilot-send-btn.streaming svg {
@@ -489,9 +594,9 @@
 
 /* ── 状态指示器 ── */
 .fleurpilot-status {
-    padding: 6px 14px;
+    padding: 8px 16px;
     background: var(--background-primary);
-    border-top: 1px solid var(--background-modifier-border);
+    border-top: 0.5px solid var(--background-modifier-border);
     font-size: var(--mb-font-size-xs);
     color: var(--text-muted);
     display: flex;
@@ -950,20 +1055,6 @@
     line-height: 1.55;
     padding: 10px 12px;
     resize: vertical;
-}
-
-/* Mode icon & context icon spans */
-.mb-mode-icon,
-.mb-ctx-icon {
-    display: inline-flex;
-    align-items: center;
-    margin-right: 4px;
-}
-
-.mb-mode-icon svg,
-.mb-ctx-icon svg {
-    width: 13px;
-    height: 13px;
 }
 
 /* Settings section heading via new Setting().setHeading() */

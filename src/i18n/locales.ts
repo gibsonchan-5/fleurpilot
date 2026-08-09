@@ -117,7 +117,21 @@ const zhCN: LocaleDict = {
     'chat.contextAllLabel': '全部',
     'chat.contextFolderLabel': '文件夹',
 
-    // inline edit
+    // chat history
+    'settings.chatHistory': '对话历史',
+    'settings.enableChatHistory': '自动保存对话历史',
+    'settings.enableChatHistoryDesc': '开始新对话前自动将当前对话保存为笔记',
+    'settings.chatHistoryFolder': '保存文件夹',
+    'settings.chatHistoryFolderDesc': '选择或输入保存对话历史的文件夹路径',
+    'chat.actions.saveNote': '保存笔记',
+    'chat.actions.copy': '复制',
+    'chat.actions.regenerate': '重新生成',
+    'chat.notice.copied': '已复制到剪贴板',
+    'chat.notice.saved': '对话已保存为笔记',
+    'chat.notice.regenerating': '正在重新生成…',
+    'chat.notice.noMessages': '没有可保存的消息',
+
+    // inline edit (zh-CN)
     'inline.title': '改写',
     'inline.original': '原文',
     'inline.result': '改写结果',
@@ -256,6 +270,20 @@ const zhTW: LocaleDict = {
     'chat.contextAllLabel': '全部',
     'chat.contextFolderLabel': '資料夾',
 
+    // chat history
+    'settings.chatHistory': '對話歷史',
+    'settings.enableChatHistory': '自動儲存對話歷史',
+    'settings.enableChatHistoryDesc': '開始新對話前自動將當前對話儲存為筆記',
+    'settings.chatHistoryFolder': '儲存資料夾',
+    'settings.chatHistoryFolderDesc': '選擇或輸入儲存對話歷史的資料夾路徑',
+    'chat.actions.saveNote': '儲存筆記',
+    'chat.actions.copy': '複製',
+    'chat.actions.regenerate': '重新生成',
+    'chat.notice.copied': '已複製到剪貼簿',
+    'chat.notice.saved': '對話已儲存為筆記',
+    'chat.notice.regenerating': '正在重新生成…',
+    'chat.notice.noMessages': '沒有可儲存的訊息',
+
     'inline.title': '改寫',
     'inline.original': '原文',
     'inline.result': '改寫結果',
@@ -391,6 +419,20 @@ const en: LocaleDict = {
     'chat.contextAllLabel': 'All',
     'chat.contextFolderLabel': 'Folder',
 
+    // chat history
+    'settings.chatHistory': 'Chat History',
+    'settings.enableChatHistory': 'Auto-save chat history',
+    'settings.enableChatHistoryDesc': 'Automatically save the current chat as a note before starting a new one',
+    'settings.chatHistoryFolder': 'Save folder',
+    'settings.chatHistoryFolderDesc': 'Choose a folder to save chat history notes',
+    'chat.actions.saveNote': 'Save as note',
+    'chat.actions.copy': 'Copy',
+    'chat.actions.regenerate': 'Regenerate',
+    'chat.notice.copied': 'Copied to clipboard',
+    'chat.notice.saved': 'Chat saved as note',
+    'chat.notice.regenerating': 'Regenerating…',
+    'chat.notice.noMessages': 'No messages to save',
+
     'inline.title': 'Rewrite',
     'inline.original': 'Original',
     'inline.result': 'Result',
@@ -525,6 +567,20 @@ const ja: LocaleDict = {
     'chat.contextNoteLabel': '現在',
     'chat.contextAllLabel': 'すべて',
     'chat.contextFolderLabel': 'フォルダ',
+
+    // chat history
+    'settings.chatHistory': 'チャット履歴',
+    'settings.enableChatHistory': 'チャット履歴を自動保存',
+    'settings.enableChatHistoryDesc': '新しいチャットを開始する前に現在のチャットをノートとして自動保存',
+    'settings.chatHistoryFolder': '保存フォルダ',
+    'settings.chatHistoryFolderDesc': 'チャット履歴を保存するフォルダを選択',
+    'chat.actions.saveNote': 'ノートとして保存',
+    'chat.actions.copy': 'コピー',
+    'chat.actions.regenerate': '再生成',
+    'chat.notice.copied': 'クリップボードにコピーしました',
+    'chat.notice.saved': 'チャットをノートとして保存しました',
+    'chat.notice.regenerating': '再生成中…',
+    'chat.notice.noMessages': '保存するメッセージがありません',
 
     'inline.title': '書き換え',
     'inline.original': '原文',
