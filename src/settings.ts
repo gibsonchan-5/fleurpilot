@@ -1,11 +1,8 @@
 // settings.ts - FleurPilot配置
-import { App, PluginSettingTab, Setting, Platform } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, LANG_LABELS, Lang } from './i18n';
 
-/**
- * 预设模型配置
- */
 export interface ModelPreset {
     id: string;
     name: string;
@@ -14,61 +11,26 @@ export interface ModelPreset {
 }
 
 export const MODEL_PRESETS: ModelPreset[] = [
-    {
-        id: 'deepseek',
-        name: 'DeepSeek',
-        baseUrl: 'https://api.deepseek.com/v1',
-        model: 'deepseek-chat',
-    },
-    {
-        id: 'qwen',
-        name: '通义千问 (DashScope)',
-        baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        model: 'qwen-plus',
-    },
-    {
-        id: 'glm',
-        name: '智谱 (GLM)',
-        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-        model: 'glm-4-flash',
-    },
-    {
-        id: 'siliconflow',
-        name: '硅基流动',
-        baseUrl: 'https://api.siliconflow.cn/v1',
-        model: 'Qwen/Qwen2.5-72B-Instruct',
-    },
-    {
-        id: 'custom',
-        name: '自定义',
-        baseUrl: '',
-        model: '',
-    },
+    { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+    { id: 'qwen', name: '通义千问 (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+    { id: 'glm', name: '智谱 (GLM)', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+    { id: 'siliconflow', name: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-72B-Instruct' },
+    { id: 'custom', name: '自定义', baseUrl: '', model: '' },
 ];
 
-/**
- * 插件设置接口
- */
 export interface FleurPilotSettings {
-    // 模型配置
-    provider: string;          // 当前选择的预设 ID
-    baseUrl: string;           // API Base URL
-    apiKey: string;            // API Key
-    model: string;             // 模型名称
-    reasoningModel: string;    // 推理模式使用的模型（如 deepseek-reasoner）
-
-    // 生成参数
-    systemPrompt: string;      // 系统提示词
-    temperature: number;       // 温度
-    maxTokens: number;         // 最大 token 数
-
-    // 功能开关
-    enableContext: boolean;    // 自动携带当前笔记上下文
-    enableInlineEdit: boolean; // 内联编辑
-    enableQuickCommands: boolean; // 快捷命令
-
-    // 界面
-    language: Lang;            // 界面语言
+    provider: string;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+    reasoningModel: string;
+    systemPrompt: string;
+    temperature: number;
+    maxTokens: number;
+    enableContext: boolean;
+    enableInlineEdit: boolean;
+    enableQuickCommands: boolean;
+    language: Lang;
 }
 
 export const DEFAULT_SETTINGS: FleurPilotSettings = {
@@ -86,9 +48,6 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
     language: 'zh-CN',
 };
 
-/**
- * 设置面板
- */
 export class FleurPilotSettingTab extends PluginSettingTab {
     plugin: FleurPilotPlugin;
 
@@ -100,15 +59,13 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-
         containerEl.addClass('mb-settings');
 
         const $ = (key: string, fb?: string) => t(this.plugin.settings.language, key, fb);
 
-        // ── 模型配置 ──
-        containerEl.createEl('h3', { text: $('settings.modelConfig'), cls: 'mb-settings-section-title' });
+        // 模型配置
+        new Setting(containerEl).setName($('settings.modelConfig')).setHeading();
 
-        // 预设选择
         new Setting(containerEl)
             .setName($('settings.provider'))
             .setDesc($('settings.providerDesc'))
@@ -123,11 +80,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         this.plugin.settings.model = preset.model;
                     }
                     await this.plugin.saveSettings();
-                    this.display(); // 刷新面板
+                    this.display();
                 });
             });
 
-        // API Base URL
         new Setting(containerEl)
             .setName($('settings.baseUrl'))
             .setDesc($('settings.baseUrlDesc'))
@@ -139,7 +95,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // API Key
         new Setting(containerEl)
             .setName($('settings.apiKey'))
             .setDesc($('settings.apiKeyDesc'))
@@ -154,7 +109,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 text.inputEl.type = 'password';
             });
 
-        // 模型名称
         new Setting(containerEl)
             .setName($('settings.model'))
             .setDesc($('settings.modelDesc'))
@@ -166,7 +120,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // 推理模型
         new Setting(containerEl)
             .setName($('settings.reasoningModel'))
             .setDesc($('settings.reasoningModelDesc'))
@@ -178,10 +131,9 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // ── 生成参数 ──
-        containerEl.createEl('h3', { text: $('settings.generationParams'), cls: 'mb-settings-section-title' });
+        // 生成参数
+        new Setting(containerEl).setName($('settings.generationParams')).setHeading();
 
-        // 系统提示词
         new Setting(containerEl)
             .setName($('settings.systemPrompt'))
             .setDesc($('settings.systemPromptDesc'))
@@ -193,20 +145,11 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         this.plugin.settings.systemPrompt = value;
                         await this.plugin.saveSettings();
                     });
-                text.inputEl.rows = 6;
-                text.inputEl.style.minWidth = '320px';
-                text.inputEl.style.maxWidth = '100%';
-                text.inputEl.style.textAlign = 'left';
-                text.inputEl.style.fontFamily = 'var(--font-monospace)';
-                text.inputEl.style.fontSize = '12px';
-                text.inputEl.style.lineHeight = '1.55';
-                text.inputEl.style.padding = '10px 12px';
-                text.inputEl.style.resize = 'vertical';
+                text.inputEl.addClass('mb-system-prompt-area');
                 text.inputEl.rows = 4;
                 text.inputEl.cols = 50;
             });
 
-        // 温度
         new Setting(containerEl)
             .setName($('settings.temperature'))
             .setDesc($('settings.temperatureDesc'))
@@ -219,7 +162,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // 最大 token 数
         new Setting(containerEl)
             .setName($('settings.maxTokens'))
             .setDesc($('settings.maxTokensDesc'))
@@ -232,54 +174,41 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // ── 功能开关 ──
-        containerEl.createEl('h3', { text: $('settings.featureSettings'), cls: 'mb-settings-section-title' });
+        // 功能开关
+        new Setting(containerEl).setName($('settings.featureSettings')).setHeading();
 
-        const addCheckboxSetting = (
-            name: string,
-            desc: string,
-            getValue: () => boolean,
-            onChange: (val: boolean) => void,
-        ) => {
-            const item = containerEl.createDiv({ cls: 'setting-item' });
-            const info = item.createDiv({ cls: 'setting-item-info' });
-            info.createDiv({ cls: 'setting-item-name', text: name });
-            info.createDiv({ cls: 'setting-item-description', text: desc });
-            const control = item.createDiv({ cls: 'setting-item-control mb-checkbox-control' });
-            const checkbox = control.createEl('input', {
-                type: 'checkbox',
-                cls: 'mb-settings-checkbox',
-            });
-            checkbox.checked = getValue();
-            checkbox.addEventListener('change', async () => {
-                onChange(checkbox.checked);
-                await this.plugin.saveSettings();
-            });
-        };
+        new Setting(containerEl)
+            .setName($('settings.enableContext'))
+            .setDesc($('settings.enableContextDesc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableContext)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableContext = value;
+                    await this.plugin.saveSettings();
+                }));
 
-        addCheckboxSetting(
-            $('settings.enableContext'),
-            $('settings.enableContextDesc'),
-            () => this.plugin.settings.enableContext,
-            (val) => { this.plugin.settings.enableContext = val; },
-        );
+        new Setting(containerEl)
+            .setName($('settings.enableInlineEdit'))
+            .setDesc($('settings.enableInlineEditDesc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableInlineEdit)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableInlineEdit = value;
+                    await this.plugin.saveSettings();
+                }));
 
-        addCheckboxSetting(
-            $('settings.enableInlineEdit'),
-            $('settings.enableInlineEditDesc'),
-            () => this.plugin.settings.enableInlineEdit,
-            (val) => { this.plugin.settings.enableInlineEdit = val; },
-        );
+        new Setting(containerEl)
+            .setName($('settings.enableQuickCommands'))
+            .setDesc($('settings.enableQuickCommandsDesc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableQuickCommands)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableQuickCommands = value;
+                    await this.plugin.saveSettings();
+                }));
 
-        addCheckboxSetting(
-            $('settings.enableQuickCommands'),
-            $('settings.enableQuickCommandsDesc'),
-            () => this.plugin.settings.enableQuickCommands,
-            (val) => { this.plugin.settings.enableQuickCommands = val; },
-        );
-
-        // ── 界面语言 ──
-        containerEl.createEl('h3', { text: $('settings.language'), cls: 'mb-settings-section-title' });
+        // 界面语言
+        new Setting(containerEl).setName($('settings.language')).setHeading();
 
         new Setting(containerEl)
             .setName($('settings.language'))
@@ -292,12 +221,12 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 dropdown.onChange(async (value) => {
                     this.plugin.settings.language = value as Lang;
                     await this.plugin.saveSettings();
-                    this.display(); // 刷新面板以应用新语言
+                    this.display();
                 });
             });
 
-        // ── 连接测试 ──
-        containerEl.createEl('h3', { text: $('settings.connectionTest'), cls: 'mb-settings-section-title' });
+        // 连接测试
+        new Setting(containerEl).setName($('settings.connectionTest')).setHeading();
 
         new Setting(containerEl)
             .setName($('settings.testConnection'))
@@ -313,16 +242,17 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         const llm = new LLMService(this.plugin.settings);
                         let result = '';
                         await llm.sendMessage(
-                            [{ role: 'user', content: $('settings.connectionTestPrompt') }],
+                            [{ role: 'user' as const, content: $('settings.connectionTestPrompt') }],
                             (chunk) => { result += chunk; },
-                            () => {},
+                            () => { /* done */ },
                         );
                         btn.setButtonText(result ? `${$('settings.connected')} · ${result.slice(0, 20)}` : $('settings.connected'));
-                    } catch (e: any) {
-                        btn.setButtonText(`${$('settings.connectionFailed')}：${e.message.slice(0, 30)}`);
+                    } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message.slice(0, 30) : 'Unknown';
+                        btn.setButtonText(`${$('settings.connectionFailed')}: ${msg}`);
                         btn.buttonEl.classList.add('mod-warning');
                     }
-                    setTimeout(() => {
+                    window.setTimeout(() => {
                         btn.setButtonText($('settings.testBtn'));
                         btn.setDisabled(false);
                         btn.buttonEl.classList.remove('mod-warning');
