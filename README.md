@@ -1,4 +1,4 @@
-# FleurPilot
+# FleurPilot（传彩笔AI）
 
 > An Obsidian AI writing companion built for Chinese users — clean UI, zero learning curve, native Chinese experience.
 
@@ -65,11 +65,11 @@ npm run build
 
 ## 中文
 
-### 为什么选择 FleurPilot？
+### 为什么选择 FleurPilot（传彩笔AI）？
 
-市面上的 Obsidian AI 插件几乎都以英文用户为第一优先级，中文体验往往是事后补上的翻译。FleurPilot 不同——**中文是第一语言**。从界面设计到 AI 交互，每个细节都围绕中文写作场景打磨。
+市面上的 Obsidian AI 插件几乎都以英文用户为第一优先级，中文体验往往是事后补上的翻译。FleurPilot（传彩笔AI）不同——**中文是第一语言**。从界面设计到 AI 交互，每个细节都围绕中文写作场景打磨。
 
-与 Copilot 类插件相比，FleurPilot 更贴合国内用户的使用习惯：
+与 Copilot 类插件相比，FleurPilot（传彩笔AI）更贴合国内用户的使用习惯：
 
 - **界面极简，拒绝 AI 味** — 没有渐变特效、没有 emoji 堆砌、没有花哨装饰。设计灵感来自 Apple / Linear / Notion 的克制美学，打开即用，无需学习。
 - **中文原生体验** — 界面文案、技能名称、AI 交互语言都是地道的中文，不是机翻产物。繁中、英文、日文同样原生支持。
@@ -102,7 +102,7 @@ npm run build
 1. 从 [Releases](https://github.com/gibsonchan-5/fleurpilot/releases) 下载 `main.js`、`styles.css`、`manifest.json` 三个文件
 2. 在 vault 的 `.obsidian/plugins/` 目录下创建 `fleurpilot` 文件夹
 3. 将三个文件放入该文件夹
-4. 打开 Obsidian → 设置 → 社区插件 → 启用「FleurPilot」
+4. 打开 Obsidian → 设置 → 社区插件 → 启用「FleurPilot（传彩笔AI）」
 5. 进入插件设置，填入 API Key
 
 ### 从源码构建

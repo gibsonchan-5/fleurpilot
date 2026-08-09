@@ -4,12 +4,15 @@ import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
 import { t } from '../i18n';
 
+/**
+ * 写作助手任务类型
+ */
 export type WritingTask =
-    | 'review'
-    | 'suggest'
-    | 'structure'
-    | 'tone'
-    | 'summary';
+    | 'review'       // 审读校对
+    | 'suggest'      // 写作建议
+    | 'structure'    // 结构分析
+    | 'tone'         // 语气风格分析
+    | 'summary';     // 内容摘要
 
 const TASK_PROMPTS: Record<WritingTask, string> = {
     review: `你是一位资深编辑，请审读以下文章，指出：
@@ -67,7 +70,7 @@ export class WritingAssistantModal extends Modal {
         plugin: FleurPilotPlugin,
         noteContent: string,
         noteTitle: string,
-        task: WritingTask,
+        task: WritingTask
     ) {
         super(app);
         this.plugin = plugin;
@@ -83,6 +86,7 @@ export class WritingAssistantModal extends Modal {
         contentEl.empty();
         contentEl.addClass('mb-writing-assistant-modal');
 
+        // 标题
         const titleMap: Record<WritingTask, string> = {
             review: this.$('assist.review'),
             suggest: this.$('assist.suggest'),
@@ -92,26 +96,30 @@ export class WritingAssistantModal extends Modal {
         };
         contentEl.createEl('h3', { text: titleMap[this.task], cls: 'mb-modal-title' });
 
+        // 笔记信息
         const infoEl = contentEl.createDiv({ cls: 'mb-note-info' });
-        infoEl.createDiv({ text: this.noteTitle, cls: 'mb-note-title' });
+        infoEl.createEl('div', { text: this.noteTitle, cls: 'mb-note-title' });
 
+        // 结果区域
         const resultContainer = contentEl.createDiv({ cls: 'mb-result-container' });
         this.loadingEl = resultContainer.createDiv({ cls: 'mb-loading' });
         this.loadingEl.setText(this.$('assist.loading'));
 
         this.resultEl = resultContainer.createDiv({ cls: 'mb-result-content mb-result-hidden' });
 
+        // 构造消息
         const systemPrompt = TASK_PROMPTS[this.task];
         const userPrompt = `文章标题：${this.noteTitle}\n\n文章内容：\n${this.noteContent}`;
 
         const messages: ChatMessage[] = [
-            { role: 'user' as const, content: userPrompt },
+            { role: 'user', content: userPrompt }
         ];
 
         const llm = new LLMService(this.plugin.settings);
         let fullResponse = '';
 
         try {
+            // 临时覆盖系统提示词
             const originalPrompt = this.plugin.settings.systemPrompt;
             this.plugin.settings.systemPrompt = systemPrompt;
 
@@ -125,7 +133,7 @@ export class WritingAssistantModal extends Modal {
                 },
                 () => {
                     this.plugin.settings.systemPrompt = originalPrompt;
-                },
+                }
             );
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -142,7 +150,8 @@ export class WritingAssistantModal extends Modal {
         let inCode = false;
         let codeContent = '';
 
-        for (const line of lines) {
+        lines.forEach(line => {
+            // 代码块
             if (line.startsWith('```')) {
                 if (!inCode) {
                     inCode = true;
@@ -152,48 +161,54 @@ export class WritingAssistantModal extends Modal {
                     const pre = container.createEl('pre');
                     pre.createEl('code', { text: codeContent });
                 }
-                continue;
+                return;
             }
             if (inCode) {
                 codeContent += (codeContent ? '\n' : '') + line;
-                continue;
+                return;
             }
 
+            // 标题
             const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
             if (headingMatch) {
                 currentP = null;
                 const level = headingMatch[1].length;
-                container.createEl(`h${level}` as keyof HTMLElementTagNameMap, { text: headingMatch[2] });
-                continue;
+                container.createEl(`h${level}`, { text: headingMatch[2] });
+                return;
             }
 
+            // 列表
             const listMatch = line.match(/^\s*[-*]\s+(.+)$/);
             if (listMatch) {
                 if (!inList) {
                     inList = true;
                 }
-                const ul = container.querySelector('ul:last-child') ?? container.createEl('ul');
+                const ul = container.querySelector('ul:last-child') || container.createEl('ul');
                 ul.createEl('li', { text: listMatch[1] });
                 currentP = null;
-                continue;
+                return;
+            } else {
+                inList = false;
             }
-            inList = false;
 
+            // 空行
             if (line.trim() === '') {
                 currentP = null;
-                continue;
+                return;
             }
 
+            // 普通段落
             if (!currentP) {
                 currentP = container.createEl('p');
             } else {
                 currentP.createEl('br');
             }
             currentP.appendText(line);
-        }
+        });
     }
 
     onClose() {
-        this.contentEl.empty();
+        const { contentEl } = this;
+        contentEl.empty();
     }
 }

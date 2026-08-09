@@ -1,5 +1,5 @@
 // settings.ts - FleurPilot配置
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFolder } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, LANG_LABELS, Lang } from './i18n';
 
@@ -30,6 +30,8 @@ export interface FleurPilotSettings {
     enableContext: boolean;
     enableInlineEdit: boolean;
     enableQuickCommands: boolean;
+    enableChatHistory: boolean;
+    chatHistoryFolder: string;
     language: Lang;
 }
 
@@ -45,6 +47,8 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
     enableContext: true,
     enableInlineEdit: true,
     enableQuickCommands: true,
+    enableChatHistory: false,
+    chatHistoryFolder: 'FleurPilot',
     language: 'zh-CN',
 };
 
@@ -207,6 +211,38 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // 对话历史
+        new Setting(containerEl).setName($('settings.chatHistory')).setHeading();
+
+        new Setting(containerEl)
+            .setName($('settings.enableChatHistory'))
+            .setDesc($('settings.enableChatHistoryDesc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableChatHistory)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableChatHistory = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName($('settings.chatHistoryFolder'))
+            .setDesc($('settings.chatHistoryFolderDesc'))
+            .addDropdown(dropdown => {
+                const folders = this.getVaultFolders();
+                dropdown.addOption('FleurPilot', 'FleurPilot');
+                for (const folder of folders) {
+                    dropdown.addOption(folder.path, folder.path);
+                }
+                if (!this.plugin.settings.chatHistoryFolder) {
+                    this.plugin.settings.chatHistoryFolder = 'FleurPilot';
+                }
+                dropdown.setValue(this.plugin.settings.chatHistoryFolder);
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.chatHistoryFolder = value;
+                    await this.plugin.saveSettings();
+                });
+            });
+
         // 界面语言
         new Setting(containerEl).setName($('settings.language')).setHeading();
 
@@ -258,5 +294,20 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         btn.buttonEl.classList.remove('mod-warning');
                     }, 5000);
                 }));
+    }
+
+    private getVaultFolders(): TFolder[] {
+        const folders: TFolder[] = [];
+        const root = this.app.vault.getRoot();
+        const collect = (folder: TFolder) => {
+            for (const child of folder.children) {
+                if (child instanceof TFolder) {
+                    folders.push(child);
+                    collect(child);
+                }
+            }
+        };
+        collect(root);
+        return folders;
     }
 }
