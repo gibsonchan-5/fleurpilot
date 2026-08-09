@@ -46,9 +46,9 @@ Compared to Copilot-style plugins, FleurPilot is designed around how Chinese use
 
 ### Installation
 
-1. Download `fleurpilot-v0.3.0.zip` from [Releases](https://github.com/gibsonchan-5/fleurpilot/releases)
-2. Extract the zip file — you will get a `fleurpilot` folder containing three files
-3. Move the `fleurpilot` folder to your vault's `.obsidian/plugins/` directory
+1. Download `main.js`, `styles.css`, and `manifest.json` from [Releases](https://github.com/gibsonchan-5/fleurpilot/releases)
+2. Create a folder named `fleurpilot` inside your vault's `.obsidian/plugins/` directory
+3. Place the three files into that folder
 4. Open Obsidian → Settings → Community Plugins → Enable "FleurPilot"
 5. Go to plugin settings and enter your API Key
 
@@ -99,9 +99,9 @@ npm run build
 
 ### 安装
 
-1. 从 [Releases](https://github.com/gibsonchan-5/fleurpilot/releases) 下载 `fleurpilot-v0.3.0.zip`
-2. 解压 zip 文件，你会得到一个 `fleurpilot` 文件夹（内含三个文件）
-3. 将 `fleurpilot` 文件夹移动到 vault 的 `.obsidian/plugins/` 目录下
+1. 从 [Releases](https://github.com/gibsonchan-5/fleurpilot/releases) 下载 `main.js`、`styles.css`、`manifest.json` 三个文件
+2. 在 vault 的 `.obsidian/plugins/` 目录下创建 `fleurpilot` 文件夹
+3. 将三个文件放入该文件夹
 4. 打开 Obsidian → 设置 → 社区插件 → 启用「FleurPilot」
 5. 进入插件设置，填入 API Key
 

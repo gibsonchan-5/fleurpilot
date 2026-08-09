@@ -927,3 +927,52 @@
     margin: 12px 0;
     color: var(--text-muted);
 }
+
+/* ═══════════════════════════════════════════════════
+   Utility / state classes (replace inline styles)
+   ═══════════════════════════════════════════════════ */
+
+.mb-loading-hidden,
+.mb-preview-hidden,
+.mb-result-hidden,
+.mb-reasoning-hidden,
+.fleurpilot-status-hidden {
+    display: none;
+}
+
+/* System prompt textarea (replace inline style) */
+.mb-system-prompt-area {
+    min-width: 320px;
+    max-width: 100%;
+    text-align: left;
+    font-family: var(--font-monospace, monospace);
+    font-size: 12px;
+    line-height: 1.55;
+    padding: 10px 12px;
+    resize: vertical;
+}
+
+/* Mode icon & context icon spans */
+.mb-mode-icon,
+.mb-ctx-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 4px;
+}
+
+.mb-mode-icon svg,
+.mb-ctx-icon svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* Settings section heading via new Setting().setHeading() */
+.mb-settings .setting-item-heading .setting-item-name {
+    font-size: var(--mb-font-size-base);
+    font-weight: 600;
+    color: var(--text-normal);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 12px;
+    margin-top: 16px;
+}

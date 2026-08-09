@@ -1,26 +1,20 @@
 // modals/inline-edit.ts - 内联编辑 Modal
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, setIcon } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
 import { wordDiff, mergeDiffParts, generateDiffHtml } from '../utils/diff';
 import { t } from '../i18n';
 
-/**
- * 内联编辑操作类型
- */
 export type InlineEditAction =
-    | 'explain'      // 解释
-    | 'simplify'     // 精简
-    | 'expand'       // 扩写
-    | 'polish'       // 润色
-    | 'translate_zh' // 翻译为中文
-    | 'translate_en' // 翻译为英文
-    | 'proofread'    // 审读校对
-    | 'custom';      // 自定义指令
+    | 'explain'
+    | 'simplify'
+    | 'expand'
+    | 'polish'
+    | 'translate_zh'
+    | 'translate_en'
+    | 'proofread'
+    | 'custom';
 
-/**
- * 预设操作的 prompt
- */
 const ACTION_PROMPTS: Record<InlineEditAction, string> = {
     explain: '请解释这段内容的含义，用更通俗易懂的方式表达：',
     simplify: '请精简这段文字，去除冗余表达，保留核心信息：',
@@ -40,7 +34,6 @@ export class InlineEditModal extends Modal {
     private result: string | null = null;
     private onApply: (text: string) => void;
 
-    // UI 元素
     private inputEl!: HTMLTextAreaElement;
     private previewEl!: HTMLElement;
     private applyBtn!: HTMLButtonElement;
@@ -52,7 +45,7 @@ export class InlineEditModal extends Modal {
         selectedText: string,
         action: InlineEditAction,
         customInstruction: string,
-        onApply: (text: string) => void
+        onApply: (text: string) => void,
     ) {
         super(app);
         this.plugin = plugin;
@@ -75,25 +68,23 @@ export class InlineEditModal extends Modal {
 
         // 原文区域
         const originalEl = contentEl.createDiv({ cls: 'mb-original-section' });
-        originalEl.createEl('div', { text: this.$('inline.original'), cls: 'mb-section-label' });
+        originalEl.createDiv({ text: this.$('inline.original'), cls: 'mb-section-label' });
         originalEl.createEl('pre', { text: this.selectedText, cls: 'mb-original-text' });
 
         // 改写结果区域
         const resultEl = contentEl.createDiv({ cls: 'mb-result-section' });
-        resultEl.createEl('div', { text: this.$('inline.result'), cls: 'mb-section-label' });
+        resultEl.createDiv({ text: this.$('inline.result'), cls: 'mb-section-label' });
 
         this.loadingEl = resultEl.createDiv({ cls: 'mb-loading' });
         this.loadingEl.setText(this.$('inline.loading'));
 
         this.previewEl = resultEl.createDiv({ cls: 'mb-preview' });
-        this.previewEl.style.display = 'none';
+        this.previewEl.addClass('mb-preview-hidden');
 
         // 构造 prompt
         const prompt = this.buildPrompt();
-
-        // 调用 AI
         const messages: ChatMessage[] = [
-            { role: 'user', content: prompt }
+            { role: 'user' as const, content: prompt },
         ];
 
         const llm = new LLMService(this.plugin.settings);
@@ -104,18 +95,18 @@ export class InlineEditModal extends Modal {
                 messages,
                 (chunk) => {
                     fullResponse += chunk;
-                    this.previewEl.style.display = 'block';
+                    this.previewEl.removeClass('mb-preview-hidden');
                     this.previewEl.setText(fullResponse);
-                    this.loadingEl.style.display = 'none';
+                    this.loadingEl.addClass('mb-loading-hidden');
                 },
                 () => {
-                    // 完成
                     this.result = fullResponse;
                     this.showDiffView();
-                }
+                },
             );
-        } catch (error: any) {
-            this.loadingEl.setText(`错误: ${error.message}`);
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            this.loadingEl.setText(`错误: ${msg}`);
             this.loadingEl.addClass('mb-error');
         }
     }
@@ -132,14 +123,13 @@ export class InlineEditModal extends Modal {
     private showDiffView() {
         if (!this.result) return;
 
-        // 清空 preview，显示 diff
         this.previewEl.empty();
         this.previewEl.addClass('mb-diff-view');
+        this.previewEl.removeClass('mb-preview-hidden');
 
         const diff = wordDiff(this.selectedText, this.result);
         const merged = mergeDiffParts(diff);
         this.previewEl.innerHTML = generateDiffHtml(merged);
-        this.previewEl.style.display = 'block';
 
         // 按钮区域
         const btnContainer = this.contentEl.createDiv({ cls: 'mb-button-container' });
@@ -158,7 +148,6 @@ export class InlineEditModal extends Modal {
     }
 
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        this.contentEl.empty();
     }
 }

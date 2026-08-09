@@ -1,10 +1,46 @@
 // main.ts — FleurPilot 插件入口
-import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Editor, Menu } from 'obsidian';
+import { Plugin, Notice, Editor, Menu, Modal } from 'obsidian';
 import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab } from './settings';
 import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
 import { WritingAssistantModal, WritingTask } from './modals/writing-assistant';
 import { t } from './i18n';
+
+/** 自定义输入 Modal（替代 prompt） */
+class CustomInputModal extends Modal {
+    private onSubmit: (value: string) => void;
+    private inputEl!: HTMLInputElement;
+
+    constructor(app: any, onSubmit: (value: string) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl('h3', { text: '自定义指令' });
+        this.inputEl = contentEl.createEl('input', { type: 'text' });
+        this.inputEl.style.width = '100%';
+        this.inputEl.style.marginTop = '10px';
+
+        const btn = contentEl.createEl('button', { text: '确认' });
+        btn.addEventListener('click', () => {
+            this.onSubmit(this.inputEl.value);
+            this.close();
+        });
+
+        this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                this.onSubmit(this.inputEl.value);
+                this.close();
+            }
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 
 export default class FleurPilotPlugin extends Plugin {
     settings: FleurPilotSettings;
@@ -15,13 +51,13 @@ export default class FleurPilotPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        // ── 注册视图 ─
+        // 注册视图
         this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
-        // ── Ribbon ──
+        // Ribbon
         this.addRibbonIcon('pen-tool', this.$('chat.title'), () => this.activateChatView());
 
-        // ── 基础命令 ──
+        // 基础命令
         this.addCommand({
             id: 'open-chat',
             name: this.$('command.openChat'),
@@ -33,7 +69,7 @@ export default class FleurPilotPlugin extends Plugin {
             callback: () => this.activateChatView(true),
         });
 
-        // ── 右键上下文菜单 ──
+        // 右键上下文菜单
         this.registerEvent(
             this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
                 const selected = editor.getSelection();
@@ -50,7 +86,7 @@ export default class FleurPilotPlugin extends Plugin {
                     submenu.addItem((sub) => {
                         sub.setTitle(this.$('menu.askAI')).onClick(() => {
                             this.activateChatView();
-                            setTimeout(() => {
+                            window.setTimeout(() => {
                                 const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
                                 if (leaf) {
                                     (leaf.view as ChatView).askAboutSelection(selected);
@@ -61,7 +97,7 @@ export default class FleurPilotPlugin extends Plugin {
                     submenu.addItem((sub) => {
                         sub.setTitle(this.$('menu.detailExplain')).onClick(() => {
                             this.activateChatView();
-                            setTimeout(() => {
+                            window.setTimeout(() => {
                                 const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
                                 if (leaf) {
                                     (leaf.view as ChatView).askAboutSelection(
@@ -74,7 +110,7 @@ export default class FleurPilotPlugin extends Plugin {
 
                     submenu.addSeparator();
 
-                    // 侵入式编辑：直接替换选中文本
+                    // 侵入式编辑
                     const editActions: { id: InlineEditAction; label: string }[] = [
                         { id: 'polish', label: this.$('menu.polish') },
                         { id: 'simplify', label: this.$('menu.shorten') },
@@ -100,19 +136,20 @@ export default class FleurPilotPlugin extends Plugin {
                     // 自定义改写
                     submenu.addItem((sub) => {
                         sub.setTitle(this.$('menu.custom')).onClick(() => {
-                            const instruction = prompt(this.$('notice.customInstruction'));
-                            if (!instruction) return;
-                            new InlineEditModal(
-                                this.app, this, selected, 'custom', instruction,
-                                (result) => editor.replaceSelection(result)
-                            ).open();
+                            new CustomInputModal(this.app, (instruction) => {
+                                if (!instruction) return;
+                                new InlineEditModal(
+                                    this.app, this, selected, 'custom', instruction,
+                                    (result) => editor.replaceSelection(result)
+                                ).open();
+                            }).open();
                         });
                     });
                 });
             })
         );
 
-        // ── 内联编辑命令 ──
+        // 内联编辑命令
         this.registerInlineEditCommand('explain', this.$('command.explain'));
         this.registerInlineEditCommand('simplify', this.$('command.shorten'));
         this.registerInlineEditCommand('expand', this.$('command.expand'));
@@ -121,14 +158,14 @@ export default class FleurPilotPlugin extends Plugin {
         this.registerInlineEditCommand('translate_en', this.$('command.translateEN'));
         this.registerInlineEditCommand('proofread', this.$('command.proofread'));
 
-        // ── 写作助手命令 ─
+        // 写作助手命令
         this.registerWritingCommand('review', this.$('command.reviewNote'));
         this.registerWritingCommand('suggest', this.$('command.writingAdvice'));
         this.registerWritingCommand('structure', this.$('command.analyzeStructure'));
         this.registerWritingCommand('tone', this.$('command.analyzeTone'));
         this.registerWritingCommand('summary', this.$('command.generateSummary'));
 
-        // ── 自定义改写 ─
+        // 自定义改写命令
         this.addCommand({
             id: 'custom-rewrite',
             name: this.$('command.customRewrite'),
@@ -138,21 +175,17 @@ export default class FleurPilotPlugin extends Plugin {
                     new Notice(this.$('notice.selectText'));
                     return;
                 }
-                const instruction = prompt(this.$('notice.customInstruction'));
-                if (!instruction) return;
-                new InlineEditModal(
-                    this.app, this, selectedText, 'custom', instruction,
-                    (result) => editor.replaceSelection(result)
-                ).open();
+                new CustomInputModal(this.app, (instruction) => {
+                    if (!instruction) return;
+                    new InlineEditModal(
+                        this.app, this, selectedText, 'custom', instruction,
+                        (result) => editor.replaceSelection(result)
+                    ).open();
+                }).open();
             },
         });
 
         this.addSettingTab(new FleurPilotSettingTab(this.app, this));
-        console.log(this.$('plugin.loaded'));
-    }
-
-    onunload() {
-        console.log(this.$('plugin.unloaded'));
     }
 
     async loadSettings() {
@@ -209,9 +242,10 @@ export default class FleurPilotPlugin extends Plugin {
                 const file = this.app.workspace.getActiveFile();
                 if (!file || file.extension !== 'md') return false;
                 if (checking) return true;
-                this.app.vault.read(file).then((content) => {
+                void this.app.vault.read(file).then((content) => {
                     new WritingAssistantModal(this.app, this, content, file.basename, task).open();
                 });
+                return true;
             },
         });
     }
