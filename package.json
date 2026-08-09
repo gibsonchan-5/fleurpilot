@@ -1,0 +1,22 @@
+{
+  "name": "fleurpilot",
+  "version": "0.3.0",
+  "description": "AI writing companion for Obsidian — chat, inline editing, and writing assistance",
+  "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gibsonchan-5/fleurpilot"
+  },
+  "license": "MIT",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "obsidian": "latest",
+    "typescript": "^5.4.0",
+    "builtin-modules": "^3.3.0"
+  }
+}
