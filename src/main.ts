@@ -19,9 +19,8 @@ class CustomInputModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         new Setting(contentEl).setName('自定义指令').setHeading();
-        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' }) as HTMLInputElement;
-
-        const btn: HTMLButtonElement = contentEl.createEl('button', { text: '确认' });
+        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' });
+        const btn = contentEl.createEl('button', { text: '确认' });
         btn.addEventListener('click', () => {
             this.onSubmit(this.inputEl.value);
             this.close();
@@ -78,6 +77,8 @@ export default class FleurPilotPlugin extends Plugin {
                 // 子菜单：FleurPilot
                 menu.addItem((item) => {
                     item.setTitle(this.$('chat.title')).setIcon('feather');
+                    // setSubmenu() returns Menu but is typed as `this` (MenuItem) in Obsidian's declarations
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
                     const submenu: Menu = item.setSubmenu();
 
                     // 询问类
@@ -186,11 +187,14 @@ export default class FleurPilotPlugin extends Plugin {
         this.addSettingTab(new FleurPilotSettingTab(this.app, this));
     }
 
-    async loadSettings() {
-        const data = await this.loadData();
+    async loadSettings(): Promise<void> {
+        // loadData() returns Promise<any> in Obsidian's declarations
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const raw = await this.loadData();
+        const data = raw as Partial<FleurPilotSettings> | undefined;
         this.settings = {
             ...DEFAULT_SETTINGS,
-            ...(data as Partial<FleurPilotSettings>),
+            ...(data ?? {}),
         };
     }
 

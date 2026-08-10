@@ -507,7 +507,7 @@ export class ChatView extends ItemView {
                     rc.empty();
                     const comp = new Component();
                     comp.load();
-                    MarkdownRenderer.render(
+                    void MarkdownRenderer.render(
                         this.app, reasoningContent, rc,
                         this.app.workspace.getActiveFile()?.path ?? '',
                         comp,
