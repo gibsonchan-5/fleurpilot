@@ -68,6 +68,9 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         return [];
     }
 
+    // Kept for backward compatibility with Obsidian < 1.13.0.
+    // getSettingDefinitions() above provides the declarative definitions for 1.13+.
+    // eslint-disable-next-line obsidianmd/no-deprecated-display
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -84,16 +87,16 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 MODEL_PRESETS.forEach(p => dropdown.addOption(p.id, p.name));
                 dropdown.setValue(this.plugin.settings.provider);
-                dropdown.onChange((value) => { void (async () => {
+                dropdown.onChange((value) => {
                     this.plugin.settings.provider = value;
                     const preset = MODEL_PRESETS.find(p => p.id === value);
                     if (preset && preset.id !== 'custom') {
                         this.plugin.settings.baseUrl = preset.baseUrl;
                         this.plugin.settings.model = preset.model;
                     }
-                    await this.plugin.saveSettings();
-                    void this.update();
-                })(); });
+                    void this.plugin.saveSettings();
+                    this.update();
+                });
             });
 
         new Setting(containerEl)
