@@ -99,7 +99,7 @@ export class WritingAssistantModal extends Modal {
 
         // 笔记信息
         const infoEl = contentEl.createDiv({ cls: 'mb-note-info' });
-        infoEl.createEl('div', { text: this.noteTitle, cls: 'mb-note-title' });
+        infoEl.createDiv({ text: this.noteTitle, cls: 'mb-note-title' });
 
         // 结果区域
         const resultContainer = contentEl.createDiv({ cls: 'mb-result-container' });

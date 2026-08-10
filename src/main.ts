@@ -53,7 +53,7 @@ export default class FleurPilotPlugin extends Plugin {
         this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
         // Ribbon
-        this.addRibbonIcon('pen-tool', this.$('chat.title'), () => this.activateChatView());
+        this.addRibbonIcon('pen-tool', this.$('chat.title'), () => { void this.activateChatView(); });
 
         // 基础命令
         this.addCommand({
@@ -78,12 +78,12 @@ export default class FleurPilotPlugin extends Plugin {
                 // 子菜单：FleurPilot
                 menu.addItem((item) => {
                     item.setTitle(this.$('chat.title')).setIcon('feather');
-                    const submenu = item.setSubmenu();
+                    const submenu: Menu = item.setSubmenu();
 
                     // 询问类
                     submenu.addItem((sub) => {
                         sub.setTitle(this.$('menu.askAI')).onClick(() => {
-                            this.activateChatView();
+                            void this.activateChatView();
                             window.setTimeout(() => {
                                 const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
                                 if (leaf) {
@@ -94,7 +94,7 @@ export default class FleurPilotPlugin extends Plugin {
                     });
                     submenu.addItem((sub) => {
                         sub.setTitle(this.$('menu.detailExplain')).onClick(() => {
-                            this.activateChatView();
+                            void this.activateChatView();
                             window.setTimeout(() => {
                                 const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CHAT)[0];
                                 if (leaf) {
@@ -187,7 +187,11 @@ export default class FleurPilotPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = await this.loadData();
+        this.settings = {
+            ...DEFAULT_SETTINGS,
+            ...(data as Partial<FleurPilotSettings>),
+        };
     }
 
     async saveSettings() {
@@ -207,7 +211,7 @@ export default class FleurPilotPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
             if (newChat) {
                 (leaf.view as ChatView).startNewChat();
             }

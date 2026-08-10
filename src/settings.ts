@@ -84,7 +84,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         this.plugin.settings.model = preset.model;
                     }
                     await this.plugin.saveSettings();
-                    this.display();
+                    void this.display();
                 })(); });
             });
 
@@ -253,7 +253,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 dropdown.onChange((value) => { void (async () => {
                     this.plugin.settings.language = value as Lang;
                     await this.plugin.saveSettings();
-                    this.display();
+                    void this.display();
                 })(); });
             });
 
