@@ -256,27 +256,30 @@ export class ChatView extends ItemView {
         new Setting(welcome).setName(this.$('chat.welcomeTitle')).setHeading();
         welcome.createEl('p', { cls: 'fleurpilot-welcome-sub', text: this.$('chat.welcomeSub') });
 
-        // 技能按钮
-        const skillsRow = welcome.createDiv({ cls: 'fleurpilot-skills' });
-        const skills = [
+        // 技能按钮 — 2x2 网格
+        const skillsGrid = welcome.createDiv({ cls: 'fleurpilot-skills-grid' });
+        const topRow = skillsGrid.createDiv({ cls: 'fleurpilot-skills-row' });
+        const bottomRow = skillsGrid.createDiv({ cls: 'fleurpilot-skills-row' });
+
+        const topSkills = [
             { label: this.$('chat.skillPolish'), prompt: this.$('chat.skillPolishPrompt') },
             { label: this.$('chat.skillProofread'), prompt: this.$('chat.skillProofreadPrompt') },
         ];
-        for (const skill of skills) {
-            const btn = skillsRow.createEl('button', {
+        for (const skill of topSkills) {
+            const btn = topRow.createEl('button', {
                 cls: 'fleurpilot-skill-btn',
                 text: skill.label,
             });
             btn.addEventListener('click', () => { void this.runSkill(skill.prompt); });
         }
 
-        const translateBtn = skillsRow.createEl('button', {
+        const translateBtn = bottomRow.createEl('button', {
             cls: 'fleurpilot-skill-btn',
             text: this.$('chat.skillTranslate'),
         });
         translateBtn.addEventListener('click', () => { void this.runTranslateSkill(); });
 
-        const summarizeBtn = skillsRow.createEl('button', {
+        const summarizeBtn = bottomRow.createEl('button', {
             cls: 'fleurpilot-skill-btn',
             text: this.$('chat.skillSummarize'),
         });
