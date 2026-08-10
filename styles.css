@@ -119,6 +119,13 @@
     flex-shrink: 0;
 }
 
+.mb-ctx-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
 /* ── 模式切换按钮 ── */
 .fleurpilot-mode-btn {
     font-size: var(--mb-font-size-sm);
@@ -222,7 +229,8 @@
 /* ── 消息区域 ── */
 .fleurpilot-messages {
     flex: 1;
-    overflow-y: auto;
+    min-width: 0;
+    overflow: hidden auto;
     padding: 28px 22px;
     scroll-behavior: smooth;
 }
@@ -255,9 +263,9 @@
 }
 
 .fleurpilot-welcome-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
     background: var(--background-secondary);
     border: 0.5px solid var(--background-modifier-border);
     color: var(--text-muted);
@@ -268,12 +276,12 @@
 }
 
 .fleurpilot-welcome-icon svg {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
 }
 
 .fleurpilot-welcome h3 {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 500;
     color: var(--text-normal);
     margin: 0 0 6px;
@@ -281,7 +289,7 @@
 }
 
 .fleurpilot-welcome-sub {
-    font-size: var(--mb-font-size-base);
+    font-size: 13px;
     color: var(--text-muted);
     margin: 0 0 32px;
 }
@@ -330,6 +338,7 @@
     gap: 10px;
     margin-bottom: 20px;
     animation: mbFadeIn 240ms cubic-bezier(0.2, 0, 0.2, 1);
+    min-width: 0;
 }
 
 .fleurpilot-avatar {
@@ -395,8 +404,19 @@
     line-height: 1.65;
     color: var(--text-normal);
     word-break: break-word;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     padding: 4px 0;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.fleurpilot-message-content *,
+.fleurpilot-message-content p,
+.fleurpilot-message-content span,
+.fleurpilot-message-content div {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
     min-width: 0;
     max-width: 100%;
 }
