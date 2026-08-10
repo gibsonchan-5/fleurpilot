@@ -35,10 +35,17 @@
     border-bottom: 0.5px solid var(--background-modifier-border);
     background: var(--background-primary);
     flex-shrink: 0;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .fleurpilot-toolbar > .fleurpilot-toolbar-btn:last-child {
     margin-left: auto;
+}
+
+.fleurpilot-toolbar > .fleurpilot-context-btn {
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .fleurpilot-brand {
