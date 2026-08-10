@@ -276,6 +276,12 @@ export class ChatView extends ItemView {
         });
         translateBtn.addEventListener('click', () => { void this.runTranslateSkill(); });
 
+        const summarizeBtn = skillsRow.createEl('button', {
+            cls: 'fleurpilot-skill-btn',
+            text: this.$('chat.skillSummarize'),
+        });
+        summarizeBtn.addEventListener('click', () => { void this.runSummarizeSkill(); });
+
         welcome.createEl('p', { cls: 'fleurpilot-welcome-hint', text: this.$('chat.welcomeHint') });
     }
 
@@ -316,6 +322,18 @@ export class ChatView extends ItemView {
             ? this.$('chat.skillTranslateENPrompt')
             : this.$('chat.skillTranslateCNPrompt');
 
+        this.inputArea.value = prompt;
+        this.inputArea.focus();
+        this.inputArea.setSelectionRange(prompt.length, prompt.length);
+    }
+
+    private async runSummarizeSkill(): Promise<void> {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'md') {
+            new Notice(this.$('chat.notice.openNote'));
+            return;
+        }
+        const prompt = this.$('chat.skillSummarizePrompt');
         this.inputArea.value = prompt;
         this.inputArea.focus();
         this.inputArea.setSelectionRange(prompt.length, prompt.length);
