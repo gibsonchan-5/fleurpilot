@@ -1,5 +1,7 @@
-// settings.ts - FleurPilot配置
-import { App, PluginSettingTab, Setting, TFolder, SettingDefinitionItem } from 'obsidian';
+// settings.ts - FleurPilot 配置
+// 使用 Obsidian 1.13+ 声明式设置 API
+// 移除 display() 方法以通过 obsidianmd/no-deprecated-display 规则审查
+import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, LANG_LABELS, Lang } from './i18n';
 
@@ -52,6 +54,18 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
     language: 'zh-CN',
 };
 
+/**
+ * 根据当前 provider 从预设中应用 baseUrl 和 model
+ * 声明式 API 不支持 onChange 回调,因此通过命令触发该逻辑
+ */
+export function applyProviderPreset(settings: FleurPilotSettings): FleurPilotSettings {
+    const preset = MODEL_PRESETS.find(p => p.id === settings.provider);
+    if (preset && preset.id !== 'custom') {
+        return { ...settings, baseUrl: preset.baseUrl, model: preset.model };
+    }
+    return settings;
+}
+
 export class FleurPilotSettingTab extends PluginSettingTab {
     plugin: FleurPilotPlugin;
 
@@ -61,260 +75,134 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     }
 
     /**
-     * Obsidian 1.13+ declarative settings API
-     * 返回设置定义列表，用于设置搜索与现代化设置界面
+     * Obsidian 1.13+ 声明式设置 API
+     * 返回所有设置项的声明式定义,Obsidian 框架负责渲染和持久化
+     * 不再使用已废弃的 display() 方法
      */
     getSettingDefinitions(): SettingDefinitionItem[] {
-        return [];
-    }
+        const lang = this.plugin.settings.language;
+        const $ = (key: string, fb?: string) => t(lang, key, fb);
 
-    // Kept for backward compatibility with Obsidian < 1.13.0.
-    // getSettingDefinitions() above provides the declarative definitions for 1.13+.
-    // eslint-disable-next-line obsidianmd/no-deprecated-display
-    display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
-        containerEl.addClass('mb-settings');
+        const presetOptions: Record<string, string> = {};
+        for (const p of MODEL_PRESETS) presetOptions[p.id] = p.name;
 
-        const $ = (key: string, fb?: string) => t(this.plugin.settings.language, key, fb);
+        const langOptions: Record<string, string> = {};
+        for (const l of Object.keys(LANG_LABELS)) langOptions[l] = LANG_LABELS[l as Lang];
 
-        // 模型配置
-        new Setting(containerEl).setName($('settings.modelConfig')).setHeading();
+        return [
+            { type: 'heading', text: $('settings.modelConfig') },
 
-        new Setting(containerEl)
-            .setName($('settings.provider'))
-            .setDesc($('settings.providerDesc'))
-            .addDropdown(dropdown => {
-                MODEL_PRESETS.forEach(p => dropdown.addOption(p.id, p.name));
-                dropdown.setValue(this.plugin.settings.provider);
-                dropdown.onChange((value) => {
-                    this.plugin.settings.provider = value;
-                    const preset = MODEL_PRESETS.find(p => p.id === value);
-                    if (preset && preset.id !== 'custom') {
-                        this.plugin.settings.baseUrl = preset.baseUrl;
-                        this.plugin.settings.model = preset.model;
-                    }
-                    void this.plugin.saveSettings();
-                    this.update();
-                });
-            });
+            {
+                key: 'provider',
+                text: $('settings.provider'),
+                description: $('settings.providerDesc'),
+                type: 'dropdown',
+                options: presetOptions,
+                default: 'deepseek',
+            },
+            {
+                key: 'baseUrl',
+                text: $('settings.baseUrl'),
+                description: $('settings.baseUrlDesc'),
+                type: 'text',
+                placeholder: $('settings.baseUrlPlaceholder'),
+            },
+            {
+                key: 'apiKey',
+                text: $('settings.apiKey'),
+                description: $('settings.apiKeyDesc'),
+                type: 'text',
+                placeholder: $('settings.apiKeyPlaceholder'),
+            },
+            {
+                key: 'model',
+                text: $('settings.model'),
+                description: $('settings.modelDesc'),
+                type: 'text',
+                placeholder: $('settings.modelPlaceholder'),
+            },
+            {
+                key: 'reasoningModel',
+                text: $('settings.reasoningModel'),
+                description: $('settings.reasoningModelDesc'),
+                type: 'text',
+                placeholder: $('settings.reasoningModelPlaceholder'),
+            },
 
-        new Setting(containerEl)
-            .setName($('settings.baseUrl'))
-            .setDesc($('settings.baseUrlDesc'))
-            .addText(text => text
-                .setPlaceholder($('settings.baseUrlPlaceholder'))
-                .setValue(this.plugin.settings.baseUrl)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.baseUrl = value;
-                    await this.plugin.saveSettings();
-                })(); }));
+            { type: 'heading', text: $('settings.generationParams') },
 
-        new Setting(containerEl)
-            .setName($('settings.apiKey'))
-            .setDesc($('settings.apiKeyDesc'))
-            .addText(text => {
-                text
-                    .setPlaceholder($('settings.apiKeyPlaceholder'))
-                    .setValue(this.plugin.settings.apiKey)
-                    .onChange((value) => { void (async () => {
-                        this.plugin.settings.apiKey = value;
-                        await this.plugin.saveSettings();
-                    })(); });
-                text.inputEl.type = 'password';
-            });
+            {
+                key: 'systemPrompt',
+                text: $('settings.systemPrompt'),
+                description: $('settings.systemPromptDesc'),
+                type: 'textarea',
+                placeholder: $('settings.systemPromptPlaceholder'),
+            },
+            {
+                key: 'temperature',
+                text: $('settings.temperature'),
+                description: $('settings.temperatureDesc'),
+                type: 'slider',
+                min: 0,
+                max: 1,
+                step: 0.1,
+            },
+            {
+                key: 'maxTokens',
+                text: $('settings.maxTokens'),
+                description: $('settings.maxTokensDesc'),
+                type: 'slider',
+                min: 512,
+                max: 16384,
+                step: 512,
+            },
 
-        new Setting(containerEl)
-            .setName($('settings.model'))
-            .setDesc($('settings.modelDesc'))
-            .addText(text => text
-                .setPlaceholder($('settings.modelPlaceholder'))
-                .setValue(this.plugin.settings.model)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.model = value;
-                    await this.plugin.saveSettings();
-                })(); }));
+            { type: 'heading', text: $('settings.featureSettings') },
 
-        new Setting(containerEl)
-            .setName($('settings.reasoningModel'))
-            .setDesc($('settings.reasoningModelDesc'))
-            .addText(text => text
-                .setPlaceholder($('settings.reasoningModelPlaceholder'))
-                .setValue(this.plugin.settings.reasoningModel)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.reasoningModel = value;
-                    await this.plugin.saveSettings();
-                })(); }));
+            {
+                key: 'enableContext',
+                text: $('settings.enableContext'),
+                description: $('settings.enableContextDesc'),
+                type: 'toggle',
+            },
+            {
+                key: 'enableInlineEdit',
+                text: $('settings.enableInlineEdit'),
+                description: $('settings.enableInlineEditDesc'),
+                type: 'toggle',
+            },
+            {
+                key: 'enableQuickCommands',
+                text: $('settings.enableQuickCommands'),
+                description: $('settings.enableQuickCommandsDesc'),
+                type: 'toggle',
+            },
 
-        // 生成参数
-        new Setting(containerEl).setName($('settings.generationParams')).setHeading();
+            { type: 'heading', text: $('settings.chatHistory') },
 
-        new Setting(containerEl)
-            .setName($('settings.systemPrompt'))
-            .setDesc($('settings.systemPromptDesc'))
-            .addTextArea(text => {
-                text
-                    .setPlaceholder($('settings.systemPromptPlaceholder'))
-                    .setValue(this.plugin.settings.systemPrompt)
-                    .onChange((value) => { void (async () => {
-                        this.plugin.settings.systemPrompt = value;
-                        await this.plugin.saveSettings();
-                    })(); });
-                text.inputEl.addClass('mb_system-prompt-area');
-            });
+            {
+                key: 'enableChatHistory',
+                text: $('settings.enableChatHistory'),
+                description: $('settings.enableChatHistoryDesc'),
+                type: 'toggle',
+            },
+            {
+                key: 'chatHistoryFolder',
+                text: $('settings.chatHistoryFolder'),
+                description: $('settings.chatHistoryFolderDesc'),
+                type: 'text',
+                placeholder: 'FleurPilot',
+            },
 
-        new Setting(containerEl)
-            .setName($('settings.temperature'))
-            .setDesc($('settings.temperatureDesc'))
-            .addSlider(slider => slider
-                .setLimits(0, 1, 0.1)
-                .setValue(this.plugin.settings.temperature)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.temperature = value;
-                    await this.plugin.saveSettings();
-                })(); }));
+            { type: 'heading', text: $('settings.language') },
 
-        new Setting(containerEl)
-            .setName($('settings.maxTokens'))
-            .setDesc($('settings.maxTokensDesc'))
-            .addSlider(slider => slider
-                .setLimits(512, 16384, 512)
-                .setValue(this.plugin.settings.maxTokens)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.maxTokens = value;
-                    await this.plugin.saveSettings();
-                })(); }));
-
-        // 功能开关
-        new Setting(containerEl).setName($('settings.featureSettings')).setHeading();
-
-        new Setting(containerEl)
-            .setName($('settings.enableContext'))
-            .setDesc($('settings.enableContextDesc'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableContext)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.enableContext = value;
-                    await this.plugin.saveSettings();
-                })(); }));
-
-        new Setting(containerEl)
-            .setName($('settings.enableInlineEdit'))
-            .setDesc($('settings.enableInlineEditDesc'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableInlineEdit)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.enableInlineEdit = value;
-                    await this.plugin.saveSettings();
-                })(); }));
-
-        new Setting(containerEl)
-            .setName($('settings.enableQuickCommands'))
-            .setDesc($('settings.enableQuickCommandsDesc'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableQuickCommands)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.enableQuickCommands = value;
-                    await this.plugin.saveSettings();
-                })(); }));
-
-        // 对话历史
-        new Setting(containerEl).setName($('settings.chatHistory')).setHeading();
-
-        new Setting(containerEl)
-            .setName($('settings.enableChatHistory'))
-            .setDesc($('settings.enableChatHistoryDesc'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableChatHistory)
-                .onChange((value) => { void (async () => {
-                    this.plugin.settings.enableChatHistory = value;
-                    await this.plugin.saveSettings();
-                })(); }));
-
-        new Setting(containerEl)
-            .setName($('settings.chatHistoryFolder'))
-            .setDesc($('settings.chatHistoryFolderDesc'))
-            .addDropdown(dropdown => {
-                const folders = this.getVaultFolders();
-                dropdown.addOption('FleurPilot', 'FleurPilot');
-                for (const folder of folders) {
-                    dropdown.addOption(folder.path, folder.path);
-                }
-                if (!this.plugin.settings.chatHistoryFolder) {
-                    this.plugin.settings.chatHistoryFolder = 'FleurPilot';
-                }
-                dropdown.setValue(this.plugin.settings.chatHistoryFolder);
-                dropdown.onChange((value) => { void (async () => {
-                    this.plugin.settings.chatHistoryFolder = value;
-                    await this.plugin.saveSettings();
-                })(); });
-            });
-
-        // 界面语言
-        new Setting(containerEl).setName($('settings.language')).setHeading();
-
-        new Setting(containerEl)
-            .setName($('settings.language'))
-            .setDesc($('settings.languageDesc'))
-            .addDropdown(dropdown => {
-                (Object.keys(LANG_LABELS) as Lang[]).forEach(lang => {
-                    dropdown.addOption(lang, LANG_LABELS[lang]);
-                });
-                dropdown.setValue(this.plugin.settings.language);
-                dropdown.onChange((value) => { void (async () => {
-                    this.plugin.settings.language = value as Lang;
-                    await this.plugin.saveSettings();
-                    void this.update();
-                })(); });
-            });
-
-        // 连接测试
-        new Setting(containerEl).setName($('settings.connectionTest')).setHeading();
-
-        new Setting(containerEl)
-            .setName($('settings.testConnection'))
-            .setDesc($('settings.testConnectionDesc'))
-            .addButton(btn => btn
-                .setButtonText($('settings.testBtn'))
-                .setCta()
-                .onClick(() => { void (async () => {
-                    btn.setDisabled(true);
-                    btn.setButtonText($('settings.testing'));
-                    try {
-                        const { LLMService } = await import('./core/llm-service');
-                        const llm = new LLMService(this.plugin.settings);
-                        let result = '';
-                        await llm.sendMessage(
-                            [{ role: 'user' as const, content: $('settings.connectionTestPrompt') }],
-                            (chunk) => { result += chunk; },
-                            () => { /* done */ },
-                        );
-                        btn.setButtonText(result ? `${$('settings.connected')} · ${result.slice(0, 20)}` : $('settings.connected'));
-                    } catch (e: unknown) {
-                        const msg = e instanceof Error ? e.message.slice(0, 30) : 'Unknown';
-                        btn.setButtonText(`${$('settings.connectionFailed')}: ${msg}`);
-                        btn.buttonEl.classList.add('mod-warning');
-                    }
-                    window.setTimeout(() => {
-                        btn.setButtonText($('settings.testBtn'));
-                        btn.setDisabled(false);
-                        btn.buttonEl.classList.remove('mod-warning');
-                    }, 5000);
-                })(); }));
-    }
-
-    private getVaultFolders(): TFolder[] {
-        const folders: TFolder[] = [];
-        const root = this.app.vault.getRoot();
-        const collect = (folder: TFolder) => {
-            for (const child of folder.children) {
-                if (child instanceof TFolder) {
-                    folders.push(child);
-                    collect(child);
-                }
-            }
-        };
-        collect(root);
-        return folders;
+            {
+                key: 'language',
+                text: $('settings.language'),
+                description: $('settings.languageDesc'),
+                type: 'dropdown',
+                options: langOptions,
+            },
+        ];
     }
 }

@@ -1,6 +1,6 @@
 // main.ts — FleurPilot 插件入口
 import { App, Plugin, Notice, Editor, Menu, Modal, Setting } from 'obsidian';
-import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab } from './settings';
+import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab, applyProviderPreset, MODEL_PRESETS } from './settings';
 import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
 import { WritingAssistantModal, WritingTask } from './modals/writing-assistant';
@@ -77,8 +77,8 @@ export default class FleurPilotPlugin extends Plugin {
                 // 子菜单：FleurPilot
                 menu.addItem((item) => {
                     item.setTitle(this.$('chat.title')).setIcon('feather');
-                    // setSubmenu() returns Menu but is typed as `this` (MenuItem) in Obsidian's declarations
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+                    // Obsidian's MenuItem.setSubmenu() is typed as `this` (MenuItem) but actually returns a Menu; explicit cast is required.
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- Obsidian typings return `this` but runtime returns Menu
                     const submenu: Menu = item.setSubmenu();
 
                     // 询问类
@@ -184,12 +184,52 @@ export default class FleurPilotPlugin extends Plugin {
             },
         });
 
+        // 应用 provider 预设（声明式 API 不支持 onChange 联动,改为命令触发）
+        this.addCommand({
+            id: 'apply-provider-preset',
+            name: this.$('command.applyProviderPreset'),
+            callback: () => {
+                this.settings = applyProviderPreset(this.settings);
+                const preset = MODEL_PRESETS.find(p => p.id === this.settings.provider);
+                if (preset && preset.id !== 'custom') {
+                    new Notice(this.$('notice.presetApplied', `${preset.name}`));
+                } else {
+                    new Notice(this.$('notice.presetCustom'));
+                }
+                void this.saveSettings();
+            },
+        });
+
+        // 测试 LLM 连接（替代设置页面中的测试按钮）
+        this.addCommand({
+            id: 'test-connection',
+            name: this.$('command.testConnection'),
+            callback: () => {
+                void (async () => {
+                    try {
+                        const { LLMService } = await import('./core/llm-service');
+                        const llm = new LLMService(this.settings);
+                        let result = '';
+                        await llm.sendMessage(
+                            [{ role: 'user' as const, content: this.$('settings.connectionTestPrompt') }],
+                            (chunk) => { result += chunk; },
+                            () => { /* done */ },
+                        );
+                        new Notice(this.$('notice.testSuccess', result.slice(0, 30)));
+                    } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message.slice(0, 50) : 'Unknown';
+                        new Notice(this.$('notice.testFailed', msg));
+                    }
+                })();
+            },
+        });
+
         this.addSettingTab(new FleurPilotSettingTab(this.app, this));
     }
 
     async loadSettings(): Promise<void> {
-        // loadData() returns Promise<any> in Obsidian's declarations
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        // Obsidian's Plugin.loadData() returns Promise<any> in its type declarations; cast is required.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- Obsidian typings return Promise<any> for saved data
         const raw = await this.loadData();
         const data = raw as Partial<FleurPilotSettings> | undefined;
         this.settings = {
