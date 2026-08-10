@@ -364,6 +364,8 @@
 .fleurpilot-message-body {
     flex: 1;
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .fleurpilot-message-header {
@@ -371,17 +373,21 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .fleurpilot-message-role {
     font-size: var(--mb-font-size-sm);
     font-weight: 600;
     color: var(--text-muted);
+    flex-shrink: 0;
 }
 
 .fleurpilot-message-time {
     font-size: 11px;
     color: var(--text-faint);
+    flex-shrink: 0;
 }
 
 .fleurpilot-message-content {
@@ -389,7 +395,10 @@
     line-height: 1.65;
     color: var(--text-normal);
     word-break: break-word;
+    overflow-wrap: break-word;
     padding: 4px 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* Markdown 渲染 */
