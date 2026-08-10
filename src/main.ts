@@ -1,5 +1,5 @@
 // main.ts — FleurPilot 插件入口
-import { Plugin, Notice, Editor, Menu, Modal } from 'obsidian';
+import { App, Plugin, Notice, Editor, Menu, Modal, Setting } from 'obsidian';
 import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab } from './settings';
 import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
@@ -11,17 +11,15 @@ class CustomInputModal extends Modal {
     private onSubmit: (value: string) => void;
     private inputEl!: HTMLInputElement;
 
-    constructor(app: any, onSubmit: (value: string) => void) {
+    constructor(app: App, onSubmit: (value: string) => void) {
         super(app);
         this.onSubmit = onSubmit;
     }
 
     onOpen() {
         const { contentEl } = this;
-        contentEl.createEl('h3', { text: '自定义指令' });
-        this.inputEl = contentEl.createEl('input', { type: 'text' });
-        this.inputEl.style.width = '100%';
-        this.inputEl.style.marginTop = '10px';
+        new Setting(contentEl).setName('自定义指令').setHeading();
+        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' });
 
         const btn = contentEl.createEl('button', { text: '确认' });
         btn.addEventListener('click', () => {
@@ -43,7 +41,7 @@ class CustomInputModal extends Modal {
 }
 
 export default class FleurPilotPlugin extends Plugin {
-    settings: FleurPilotSettings;
+    settings!: FleurPilotSettings;
 
     /** i18n helper */
     $ = (key: string, fb?: string) => t(this.settings.language, key, fb);
@@ -61,12 +59,12 @@ export default class FleurPilotPlugin extends Plugin {
         this.addCommand({
             id: 'open-chat',
             name: this.$('command.openChat'),
-            callback: () => this.activateChatView(),
+            callback: () => { void this.activateChatView(); },
         });
         this.addCommand({
             id: 'new-chat',
             name: this.$('command.newChat'),
-            callback: () => this.activateChatView(true),
+            callback: () => { void this.activateChatView(true); },
         });
 
         // 右键上下文菜单

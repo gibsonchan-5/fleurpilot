@@ -80,22 +80,14 @@ export function mergeDiffParts(parts: DiffPart[]): DiffPart[] {
     return merged;
 }
 
-export function generateDiffHtml(diff: DiffPart[]): string {
-    let html = '';
+export function renderDiffInto(container: HTMLElement, diff: DiffPart[]): void {
+    container.empty();
     for (const part of diff) {
-        const escaped = part.text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        if (part.type === 'add') {
-            html += `<span class="mb-diff-add">${escaped}</span>`;
-        } else if (part.type === 'remove') {
-            html += `<span class="mb-diff-remove">${escaped}</span>`;
-        } else {
-            html += `<span class="mb-diff-keep">${escaped}</span>`;
-        }
+        const cls = part.type === 'add' ? 'mb-diff-add'
+                  : part.type === 'remove' ? 'mb-diff-remove'
+                  : 'mb-diff-keep';
+        container.createSpan({ cls, text: part.text });
     }
-    return html;
 }
 
 export function generateDiffSummary(diff: DiffPart[]): string {

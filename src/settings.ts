@@ -76,7 +76,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 MODEL_PRESETS.forEach(p => dropdown.addOption(p.id, p.name));
                 dropdown.setValue(this.plugin.settings.provider);
-                dropdown.onChange(async (value) => {
+                dropdown.onChange((value) => { void (async () => {
                     this.plugin.settings.provider = value;
                     const preset = MODEL_PRESETS.find(p => p.id === value);
                     if (preset && preset.id !== 'custom') {
@@ -85,7 +85,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     }
                     await this.plugin.saveSettings();
                     this.display();
-                });
+                })(); });
             });
 
         new Setting(containerEl)
@@ -94,10 +94,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setPlaceholder($('settings.baseUrlPlaceholder'))
                 .setValue(this.plugin.settings.baseUrl)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.baseUrl = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.apiKey'))
@@ -106,10 +106,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 text
                     .setPlaceholder($('settings.apiKeyPlaceholder'))
                     .setValue(this.plugin.settings.apiKey)
-                    .onChange(async (value) => {
+                    .onChange((value) => { void (async () => {
                         this.plugin.settings.apiKey = value;
                         await this.plugin.saveSettings();
-                    });
+                    })(); });
                 text.inputEl.type = 'password';
             });
 
@@ -119,10 +119,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setPlaceholder($('settings.modelPlaceholder'))
                 .setValue(this.plugin.settings.model)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.model = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.reasoningModel'))
@@ -130,10 +130,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setPlaceholder($('settings.reasoningModelPlaceholder'))
                 .setValue(this.plugin.settings.reasoningModel)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.reasoningModel = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         // 生成参数
         new Setting(containerEl).setName($('settings.generationParams')).setHeading();
@@ -145,13 +145,11 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 text
                     .setPlaceholder($('settings.systemPromptPlaceholder'))
                     .setValue(this.plugin.settings.systemPrompt)
-                    .onChange(async (value) => {
+                    .onChange((value) => { void (async () => {
                         this.plugin.settings.systemPrompt = value;
                         await this.plugin.saveSettings();
-                    });
-                text.inputEl.addClass('mb-system-prompt-area');
-                text.inputEl.rows = 4;
-                text.inputEl.cols = 50;
+                    })(); });
+                text.inputEl.addClass('mb_system-prompt-area');
             });
 
         new Setting(containerEl)
@@ -160,11 +158,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addSlider(slider => slider
                 .setLimits(0, 1, 0.1)
                 .setValue(this.plugin.settings.temperature)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.temperature = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.maxTokens'))
@@ -172,11 +169,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addSlider(slider => slider
                 .setLimits(512, 16384, 512)
                 .setValue(this.plugin.settings.maxTokens)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.maxTokens = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         // 功能开关
         new Setting(containerEl).setName($('settings.featureSettings')).setHeading();
@@ -186,30 +182,30 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .setDesc($('settings.enableContextDesc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableContext)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.enableContext = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.enableInlineEdit'))
             .setDesc($('settings.enableInlineEditDesc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableInlineEdit)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.enableInlineEdit = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.enableQuickCommands'))
             .setDesc($('settings.enableQuickCommandsDesc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableQuickCommands)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.enableQuickCommands = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         // 对话历史
         new Setting(containerEl).setName($('settings.chatHistory')).setHeading();
@@ -219,10 +215,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .setDesc($('settings.enableChatHistoryDesc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableChatHistory)
-                .onChange(async (value) => {
+                .onChange((value) => { void (async () => {
                     this.plugin.settings.enableChatHistory = value;
                     await this.plugin.saveSettings();
-                }));
+                })(); }));
 
         new Setting(containerEl)
             .setName($('settings.chatHistoryFolder'))
@@ -237,10 +233,10 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     this.plugin.settings.chatHistoryFolder = 'FleurPilot';
                 }
                 dropdown.setValue(this.plugin.settings.chatHistoryFolder);
-                dropdown.onChange(async (value) => {
+                dropdown.onChange((value) => { void (async () => {
                     this.plugin.settings.chatHistoryFolder = value;
                     await this.plugin.saveSettings();
-                });
+                })(); });
             });
 
         // 界面语言
@@ -254,11 +250,11 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     dropdown.addOption(lang, LANG_LABELS[lang]);
                 });
                 dropdown.setValue(this.plugin.settings.language);
-                dropdown.onChange(async (value) => {
+                dropdown.onChange((value) => { void (async () => {
                     this.plugin.settings.language = value as Lang;
                     await this.plugin.saveSettings();
                     this.display();
-                });
+                })(); });
             });
 
         // 连接测试
@@ -270,7 +266,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .addButton(btn => btn
                 .setButtonText($('settings.testBtn'))
                 .setCta()
-                .onClick(async () => {
+                .onClick(() => { void (async () => {
                     btn.setDisabled(true);
                     btn.setButtonText($('settings.testing'));
                     try {
@@ -293,7 +289,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         btn.setDisabled(false);
                         btn.buttonEl.classList.remove('mod-warning');
                     }, 5000);
-                }));
+                })(); }));
     }
 
     private getVaultFolders(): TFolder[] {

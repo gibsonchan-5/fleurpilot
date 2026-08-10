@@ -1,5 +1,5 @@
 // modals/writing-assistant.ts - 写作助手 Modal
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Setting } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
 import { t } from '../i18n';
@@ -94,7 +94,8 @@ export class WritingAssistantModal extends Modal {
             tone: this.$('assist.tone'),
             summary: this.$('assist.summary'),
         };
-        contentEl.createEl('h3', { text: titleMap[this.task], cls: 'mb-modal-title' });
+        const setting = new Setting(contentEl).setName(titleMap[this.task]).setHeading();
+        setting.settingEl.addClass('mb-modal-title');
 
         // 笔记信息
         const infoEl = contentEl.createDiv({ cls: 'mb-note-info' });

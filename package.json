@@ -1,7 +1,7 @@
 {
   "name": "fleurpilot",
-  "version": "0.3.0",
-  "description": "AI writing companion for Obsidian — chat, inline editing, and writing assistance",
+  "version": "0.5.0",
+  "description": "AI writing companion for Obsidian.",
   "main": "main.js",
   "repository": {
     "type": "git",

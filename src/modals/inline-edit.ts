@@ -1,8 +1,8 @@
 // modals/inline-edit.ts - 内联编辑 Modal
-import { App, Modal, Notice, setIcon } from 'obsidian';
+import { App, Modal, Notice, Setting } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
-import { wordDiff, mergeDiffParts, generateDiffHtml } from '../utils/diff';
+import { wordDiff, mergeDiffParts, renderDiffInto } from '../utils/diff';
 import { t } from '../i18n';
 
 export type InlineEditAction =
@@ -34,9 +34,7 @@ export class InlineEditModal extends Modal {
     private result: string | null = null;
     private onApply: (text: string) => void;
 
-    private inputEl!: HTMLTextAreaElement;
     private previewEl!: HTMLElement;
-    private applyBtn!: HTMLButtonElement;
     private loadingEl!: HTMLElement;
 
     constructor(
@@ -63,8 +61,7 @@ export class InlineEditModal extends Modal {
         contentEl.addClass('mb-inline-edit-modal');
 
         // 标题
-        const titleEl = contentEl.createEl('h3', { text: this.$('inline.title') });
-        titleEl.addClass('mb-modal-title');
+        new Setting(contentEl).setName(this.$('inline.title')).setHeading();
 
         // 原文区域
         const originalEl = contentEl.createDiv({ cls: 'mb-original-section' });
@@ -129,7 +126,7 @@ export class InlineEditModal extends Modal {
 
         const diff = wordDiff(this.selectedText, this.result);
         const merged = mergeDiffParts(diff);
-        this.previewEl.innerHTML = generateDiffHtml(merged);
+        renderDiffInto(this.previewEl, merged);
 
         // 按钮区域
         const btnContainer = this.contentEl.createDiv({ cls: 'mb-button-container' });
@@ -137,8 +134,8 @@ export class InlineEditModal extends Modal {
         const cancelBtn = btnContainer.createEl('button', { text: this.$('inline.cancel'), cls: 'mb-btn mb-btn-cancel' });
         cancelBtn.addEventListener('click', () => this.close());
 
-        this.applyBtn = btnContainer.createEl('button', { text: this.$('inline.apply'), cls: 'mb-btn mb-btn-apply' });
-        this.applyBtn.addEventListener('click', () => {
+        const applyBtn = btnContainer.createEl('button', { text: this.$('inline.apply'), cls: 'mb-btn mb-btn-apply' });
+        applyBtn.addEventListener('click', () => {
             if (this.result) {
                 this.onApply(this.result);
                 new Notice(this.$('inline.applied'));
