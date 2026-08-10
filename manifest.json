@@ -1,9 +1,9 @@
 {
   "id": "fleurpilot",
-  "name": "FleurPilot（传彩笔AI）",
-  "version": "0.3.0",
+  "name": "FleurPilot",
+  "version": "0.5.0",
   "minAppVersion": "1.4.0",
-  "description": "AI writing companion — chat, inline editing, and writing assistance.",
+  "description": "AI writing companion with deep thinking mode.",
   "author": "JC5",
   "isDesktopOnly": false
 }

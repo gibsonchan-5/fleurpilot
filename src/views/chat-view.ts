@@ -1,7 +1,7 @@
 // views/chat-view.ts — FleurPilot 聊天视图
 import {
     ItemView, WorkspaceLeaf, MarkdownRenderer, Component, Notice,
-    TFile, TFolder, Menu, Events, setIcon,
+    TFolder, Menu, setIcon, Setting,
 } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
@@ -250,7 +250,7 @@ export class ChatView extends ItemView {
         const welcome = this.messageContainer.createDiv({ cls: 'fleurpilot-welcome' });
         const iconDiv = welcome.createDiv({ cls: 'fleurpilot-welcome-icon' });
         setIcon(iconDiv, 'pen-tool');
-        welcome.createEl('h3', { text: this.$('chat.welcomeTitle') });
+        new Setting(welcome).setName(this.$('chat.welcomeTitle')).setHeading();
         welcome.createEl('p', { cls: 'fleurpilot-welcome-sub', text: this.$('chat.welcomeSub') });
 
         // 技能按钮

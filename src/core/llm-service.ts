@@ -84,7 +84,6 @@ export class LLMService {
             // 尝试流式解析
             const text = response.text;
             const lines = text.split('\n');
-            let buffer = '';
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
