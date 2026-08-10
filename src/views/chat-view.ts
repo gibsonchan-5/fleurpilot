@@ -51,7 +51,7 @@ export class ChatView extends ItemView {
     private $(key: string, fb?: string) { return t(this.plugin.settings.language, key, fb); }
 
     getViewType(): string { return VIEW_TYPE_CHAT; }
-    getDisplayText(): string { return this.$('chat.title'); }
+    getDisplayText(): string { return 'FleurPilot'; }
     getIcon(): string { return 'pen-tool'; }
 
     async onOpen(): Promise<void> {
@@ -143,7 +143,10 @@ export class ChatView extends ItemView {
 
     private getActiveFileName(): string {
         const file = this.app.workspace.getActiveFile();
-        return file ? file.basename : this.$('chat.contextNoneShort');
+        if (!file) return this.$('chat.contextNoneShort');
+        const name = file.basename;
+        const maxLen = 16;
+        return name.length > maxLen ? `${name.slice(0, maxLen - 1)}…` : name;
     }
 
     private showContextMenu(event: MouseEvent): void {

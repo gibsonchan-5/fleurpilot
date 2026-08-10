@@ -1,6 +1,6 @@
 {
   "name": "fleurpilot",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "AI writing companion for Obsidian.",
   "main": "main.js",
   "repository": {
