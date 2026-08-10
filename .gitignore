@@ -2,6 +2,7 @@ node_modules/
 release/
 .DS_Store
 *.tgz
+*.zip
 package-lock.json
 
 # 构建产物（obsidianmd 要求作为 Release 附件上传，而非 commit）
