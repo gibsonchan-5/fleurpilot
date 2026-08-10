@@ -1,9 +1,9 @@
 {
   "id": "fleurpilot",
   "name": "FleurPilot",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.15.0",
   "description": "AI writing companion with deep thinking mode.",
-  "author": "JC5",
+  "author": "gibsonchan-5",
   "isDesktopOnly": false
 }
