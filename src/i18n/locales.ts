@@ -225,7 +225,7 @@ const zhTW: LocaleDict = {
     'command.customRewrite': 'AI 自訂改寫選取文字',
     'menu.askAI': '詢問 AI',
     'menu.detailExplain': '詳細解釋',
-    'menu.editParent': '傳彩筆 改寫',
+    'menu.editParent': 'FleurPilot 改寫',
     'menu.polish': '潤色',
     'menu.shorten': '精簡',
     'menu.expand': '擴寫',
@@ -236,7 +236,7 @@ const zhTW: LocaleDict = {
     'notice.selectText': '請先選取要改寫的文字',
     'notice.customInstruction': '請輸入改寫指令：',
 
-    'chat.title': '傳彩筆',
+    'chat.title': 'FleurPilot',
     'chat.toggleMode': '切換對話模式',
     'chat.newChat': '新增對話',
     'chat.modeChat': 'Chat',
@@ -248,9 +248,9 @@ const zhTW: LocaleDict = {
     'chat.contextNoneShort': '無',
     'chat.placeholder': '輸入訊息… (↵ 發送, Shift+↵ 換行)',
     'chat.send': '發送',
-    'chat.welcomeTitle': '傳彩筆AI',
+    'chat.welcomeTitle': 'FleurPilot',
     'chat.welcomeSub': '你的 AI 伙伴',
-    'chat.welcomeHint': '選取文字，右鍵使用傳彩筆AI',
+    'chat.welcomeHint': '選取文字，右鍵使用 FleurPilot',
     'chat.skillPolish': '全文潤色',
     'chat.skillProofread': '智慧校對',
     'chat.skillTranslate': '全文翻譯',
@@ -262,7 +262,7 @@ const zhTW: LocaleDict = {
     'chat.notice.readError': '讀取筆記失敗',
     'chat.notice.newChat': '已開始新對話',
     'chat.roleUser': '你',
-    'chat.roleAssistant': '傳彩筆AI',
+    'chat.roleAssistant': 'FleurPilot',
     'chat.avatarUser': '我',
     'chat.reasoningLabel': '思考過程',
     'chat.thinking': '思考中…',
@@ -310,8 +310,8 @@ const zhTW: LocaleDict = {
     'error.noBaseUrl': 'API Base URL 未配置',
     'error.requestCancelled': '請求已取消',
 
-    'plugin.loaded': '傳彩筆AI 外掛已載入',
-    'plugin.unloaded': '傳彩筆AI 外掛已卸載',
+    'plugin.loaded': 'FleurPilot 外掛已載入',
+    'plugin.unloaded': 'FleurPilot 外掛已卸載',
 };
 
 const en: LocaleDict = {
