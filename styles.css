@@ -421,9 +421,9 @@
 .fleurpilot-message-content p,
 .fleurpilot-message-content span,
 .fleurpilot-message-content div {
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
     min-width: 0;
     max-width: 100%;
 }

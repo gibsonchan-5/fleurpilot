@@ -111,7 +111,7 @@ export class ChatView extends ItemView {
     private updateModeButtonLabel(): void {
         this.modeButton.empty();
         const icon = this.modeButton.createSpan({ cls: 'mb-mode-icon' });
-        const label = this.modeButton.createSpan({
+        this.modeButton.createSpan({
             cls: 'mb-mode-label',
             text: this.isReasoningMode ? this.$('chat.modeDeepThink') : this.$('chat.modeChat'),
         });
@@ -121,7 +121,7 @@ export class ChatView extends ItemView {
     private updateContextButtonLabel(): void {
         this.contextButton.empty();
         const icon = this.contextButton.createSpan({ cls: 'mb-ctx-icon' });
-        const label = this.contextButton.createSpan({ cls: 'mb-ctx-label' });
+        const labelSpan = this.contextButton.createSpan({ cls: 'mb-ctx-label' });
 
         const iconMap: Record<ContextMode, string> = {
             active: 'file-text',
@@ -137,7 +137,7 @@ export class ChatView extends ItemView {
             folder: this.selectedFolderPath || this.$('chat.contextChooseFolder'),
             none: this.$('chat.contextNone'),
         };
-        label.setText(labels[this.contextMode]);
+        labelSpan.setText(labels[this.contextMode]);
         this.contextButton.setAttr('title', labels[this.contextMode]);
     }
 
@@ -231,7 +231,7 @@ export class ChatView extends ItemView {
         this.inputArea.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                this.sendMessage();
+                void this.sendMessage();
             }
         });
 
@@ -240,7 +240,7 @@ export class ChatView extends ItemView {
             attr: { title: this.$('chat.send') },
         });
         setIcon(this.sendButton, 'send');
-        this.sendButton.addEventListener('click', () => this.sendMessage());
+        this.sendButton.addEventListener('click', () => { void this.sendMessage(); });
     }
 
     private createStatusIndicator(): void {
@@ -267,14 +267,14 @@ export class ChatView extends ItemView {
                 cls: 'fleurpilot-skill-btn',
                 text: skill.label,
             });
-            btn.addEventListener('click', () => this.runSkill(skill.prompt));
+            btn.addEventListener('click', () => { void this.runSkill(skill.prompt); });
         }
 
         const translateBtn = skillsRow.createEl('button', {
             cls: 'fleurpilot-skill-btn',
             text: this.$('chat.skillTranslate'),
         });
-        translateBtn.addEventListener('click', () => this.runTranslateSkill());
+        translateBtn.addEventListener('click', () => { void this.runTranslateSkill(); });
 
         welcome.createEl('p', { cls: 'fleurpilot-welcome-hint', text: this.$('chat.welcomeHint') });
     }
@@ -324,7 +324,7 @@ export class ChatView extends ItemView {
     askAboutSelection(text: string): void {
         if (this.isStreaming) return;
         this.inputArea.value = text;
-        this.sendMessage();
+        void this.sendMessage();
     }
 
     private async sendMessage(): Promise<void> {
@@ -654,7 +654,7 @@ export class ChatView extends ItemView {
 
         new Notice(this.$('chat.notice.regenerating'));
         this.inputArea.value = lastUser.content;
-        this.sendMessage();
+        void this.sendMessage();
     }
 
     private findLastMessageByRole(role: 'user' | 'assistant'): ConversationMessage | null {
