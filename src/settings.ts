@@ -1,5 +1,5 @@
 // settings.ts - FleurPilot配置
-import { App, PluginSettingTab, Setting, TFolder } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFolder, SettingDefinitionItem } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, LANG_LABELS, Lang } from './i18n';
 
@@ -60,6 +60,14 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    /**
+     * Obsidian 1.13+ declarative settings API
+     * 返回设置定义列表，用于设置搜索与现代化设置界面
+     */
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        return [];
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -84,7 +92,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                         this.plugin.settings.model = preset.model;
                     }
                     await this.plugin.saveSettings();
-                    void this.display();
+                    void this.update();
                 })(); });
             });
 
@@ -253,7 +261,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 dropdown.onChange((value) => { void (async () => {
                     this.plugin.settings.language = value as Lang;
                     await this.plugin.saveSettings();
-                    void this.display();
+                    void this.update();
                 })(); });
             });
 

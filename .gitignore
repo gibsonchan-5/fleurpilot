@@ -3,3 +3,8 @@ release/
 .DS_Store
 *.tgz
 package-lock.json
+
+# 构建产物（obsidianmd 要求作为 Release 附件上传，而非 commit）
+main.js
+data.json
+*.js.map

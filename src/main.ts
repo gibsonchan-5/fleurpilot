@@ -19,9 +19,9 @@ class CustomInputModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         new Setting(contentEl).setName('自定义指令').setHeading();
-        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' });
+        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' }) as HTMLInputElement;
 
-        const btn = contentEl.createEl('button', { text: '确认' });
+        const btn: HTMLButtonElement = contentEl.createEl('button', { text: '确认' });
         btn.addEventListener('click', () => {
             this.onSubmit(this.inputEl.value);
             this.close();
