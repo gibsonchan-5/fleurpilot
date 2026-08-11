@@ -655,55 +655,64 @@ export class ChatView extends ItemView {
 
     private showAssistantContextMenu(evt: MouseEvent, fullContent: string): void {
         evt.preventDefault();
+        evt.stopPropagation();
 
         const selection = window.getSelection();
         const selectedText = selection ? selection.toString().trim() : '';
 
         const menu = new Menu();
 
-        if (selectedText) {
-            menu.addItem((item) => {
-                item.setTitle(this.$('chat.contextMenu.copySelection'));
-                item.setIcon('copy');
-                item.onClick(async () => {
-                    try {
-                        await navigator.clipboard.writeText(selectedText);
-                        new Notice(this.$('chat.notice.copied'));
-                    } catch {
-                        new Notice('Failed to copy');
-                    }
-                });
+        // 翻译
+        menu.addItem((item) => {
+            item.setTitle(this.$('chat.contextMenu.translate'));
+            item.setIcon('languages');
+            item.onClick(() => {
+                const textToTranslate = selectedText || fullContent;
+                void this.askAboutSelection(textToTranslate);
             });
+        });
 
-            menu.addItem((item) => {
-                item.setTitle(this.$('chat.contextMenu.saveSelectionAsNote'));
-                item.setIcon('file-plus');
-                item.onClick(() => {
-                    void this.saveSelectionAsNote(selectedText);
-                });
+        // 查词
+        menu.addItem((item) => {
+            item.setTitle(this.$('chat.contextMenu.lookup'));
+            item.setIcon('book');
+            item.onClick(() => {
+                if (selectedText) {
+                    void this.askAboutSelection(selectedText);
+                } else {
+                    new Notice(this.$('chat.contextMenu.selectTextFirst'));
+                }
             });
-        } else {
-            menu.addItem((item) => {
-                item.setTitle(this.$('chat.actions.copy'));
-                item.setIcon('copy');
-                item.onClick(async () => {
-                    try {
-                        await navigator.clipboard.writeText(fullContent);
-                        new Notice(this.$('chat.notice.copied'));
-                    } catch {
-                        new Notice('Failed to copy');
-                    }
-                });
-            });
+        });
 
-            menu.addItem((item) => {
-                item.setTitle(this.$('chat.actions.saveNote'));
-                item.setIcon('file-plus');
-                item.onClick(() => {
-                    void this.saveAssistantMessageAsNote(fullContent);
-                });
+        // 复制
+        menu.addItem((item) => {
+            item.setTitle(this.$('chat.contextMenu.copy'));
+            item.setIcon('copy');
+            item.onClick(async () => {
+                const textToCopy = selectedText || fullContent;
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    new Notice(this.$('chat.notice.copied'));
+                } catch {
+                    new Notice('Failed to copy');
+                }
             });
-        }
+        });
+
+        // 保存为笔记
+        menu.addItem((item) => {
+            item.setTitle(this.$('chat.contextMenu.saveAsNote'));
+            item.setIcon('file-plus');
+            item.onClick(() => {
+                const textToSave = selectedText || fullContent;
+                if (selectedText) {
+                    void this.saveSelectionAsNote(textToSave);
+                } else {
+                    void this.saveAssistantMessageAsNote(textToSave);
+                }
+            });
+        });
 
         menu.showAtPosition({ x: evt.clientX, y: evt.clientY });
     }
