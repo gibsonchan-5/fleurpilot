@@ -564,38 +564,21 @@ export class ChatView extends ItemView {
         const contentEl = body.querySelector('.fleurpilot-message-content');
         const fullContent = contentEl?.innerText || '';
 
-        // 保存笔记（选中文字时保存选中，否则保存整条）
+        // 保存笔记（保存整个对话）
         const saveBtn = actionsRow.createEl('button', {
             cls: 'fleurpilot-action-btn',
             attr: { 'aria-label': this.$('chat.actions.saveNote') },
         });
         setIcon(saveBtn, 'file-plus');
-        saveBtn.addEventListener('click', () => {
-            const selection = window.getSelection()?.toString().trim() || '';
-            const textToSave = selection || fullContent;
-            if (selection) {
-                void this.saveSelectionAsNote(textToSave);
-            } else {
-                void this.saveAssistantMessageAsNote(textToSave);
-            }
-        });
+        saveBtn.addEventListener('click', () => { void this.saveConversationAsNote(); });
 
-        // 复制（选中文字时复制选中，否则复制整条）
+        // 复制（复制整条助手回复）
         const copyBtn = actionsRow.createEl('button', {
             cls: 'fleurpilot-action-btn',
             attr: { 'aria-label': this.$('chat.actions.copy') },
         });
         setIcon(copyBtn, 'copy');
-        copyBtn.addEventListener('click', async () => {
-            const selection = window.getSelection()?.toString().trim() || '';
-            const textToCopy = selection || fullContent;
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                new Notice(this.$('chat.notice.copied'));
-            } catch {
-                new Notice('Failed to copy');
-            }
-        });
+        copyBtn.addEventListener('click', () => { void this.copyLastAssistantMessage(); });
 
         // 重新生成
         const regenerateBtn = actionsRow.createEl('button', {
@@ -650,130 +633,6 @@ export class ChatView extends ItemView {
         }
 
         await this.app.vault.create(filePath, content);
-        new Notice(this.$('chat.notice.saved'));
-    }
-
-    private showAssistantContextMenu(evt: MouseEvent, fullContent: string): void {
-        evt.preventDefault();
-        evt.stopPropagation();
-
-        const selection = window.getSelection();
-        const selectedText = selection ? selection.toString().trim() : '';
-
-        const menu = new Menu();
-
-        // 翻译
-        menu.addItem((item) => {
-            item.setTitle(this.$('chat.contextMenu.translate'));
-            item.setIcon('languages');
-            item.onClick(() => {
-                const textToTranslate = selectedText || fullContent;
-                void this.askAboutSelection(textToTranslate);
-            });
-        });
-
-        // 查词
-        menu.addItem((item) => {
-            item.setTitle(this.$('chat.contextMenu.lookup'));
-            item.setIcon('book');
-            item.onClick(() => {
-                if (selectedText) {
-                    void this.askAboutSelection(selectedText);
-                } else {
-                    new Notice(this.$('chat.contextMenu.selectTextFirst'));
-                }
-            });
-        });
-
-        // 复制
-        menu.addItem((item) => {
-            item.setTitle(this.$('chat.contextMenu.copy'));
-            item.setIcon('copy');
-            item.onClick(async () => {
-                const textToCopy = selectedText || fullContent;
-                try {
-                    await navigator.clipboard.writeText(textToCopy);
-                    new Notice(this.$('chat.notice.copied'));
-                } catch {
-                    new Notice('Failed to copy');
-                }
-            });
-        });
-
-        // 保存为笔记
-        menu.addItem((item) => {
-            item.setTitle(this.$('chat.contextMenu.saveAsNote'));
-            item.setIcon('file-plus');
-            item.onClick(() => {
-                const textToSave = selectedText || fullContent;
-                if (selectedText) {
-                    void this.saveSelectionAsNote(textToSave);
-                } else {
-                    void this.saveAssistantMessageAsNote(textToSave);
-                }
-            });
-        });
-
-        menu.showAtPosition({ x: evt.clientX, y: evt.clientY });
-    }
-
-    private async saveSelectionAsNote(selection: string): Promise<void> {
-        const folderPath = this.plugin.settings.chatHistoryFolder || 'FleurPilot';
-        const now = new Date();
-        const pad = (n: number) => String(n).padStart(2, '0');
-        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
-
-        const firstLine = selection.split('\n')[0].slice(0, 30).replace(/[\\/:*?"<>|]/g, '').trim();
-        const title = `${firstLine} ${timestamp}`;
-
-        let content = `# ${title}\n\n`;
-        content += selection;
-
-        const folder = this.app.vault.getAbstractFileByPath(folderPath);
-        if (!folder) {
-            try {
-                await this.app.vault.createFolder(folderPath);
-            } catch { /* folder may already exist */ }
-        }
-
-        let filePath = `${folderPath}/${title}.md`;
-        let counter = 1;
-        while (this.app.vault.getAbstractFileByPath(filePath)) {
-            filePath = `${folderPath}/${title} (${counter}).md`;
-            counter++;
-        }
-
-        await this.app.vault.create(filePath, content);
-        new Notice(this.$('chat.notice.saved'));
-    }
-
-    private async saveAssistantMessageAsNote(content: string): Promise<void> {
-        const folderPath = this.plugin.settings.chatHistoryFolder || 'FleurPilot';
-        const now = new Date();
-        const pad = (n: number) => String(n).padStart(2, '0');
-        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
-
-        const firstLine = content.split('\n')[0].slice(0, 30).replace(/[\\/:*?"<>|]/g, '').trim();
-        const title = `${this.$('chat.roleAssistant')} - ${firstLine} ${timestamp}`;
-
-        let noteContent = `# ${title}\n\n`;
-        noteContent += content;
-
-        const folder = this.app.vault.getAbstractFileByPath(folderPath);
-        if (!folder) {
-            try {
-                await this.app.vault.createFolder(folderPath);
-            } catch { /* folder may already exist */ }
-        }
-
-        let filePath = `${folderPath}/${title}.md`;
-        let counter = 1;
-        while (this.app.vault.getAbstractFileByPath(filePath)) {
-            filePath = `${folderPath}/${title} (${counter}).md`;
-            counter++;
-        }
-
-        await this.app.vault.create(filePath, noteContent);
         new Notice(this.$('chat.notice.saved'));
     }
 
