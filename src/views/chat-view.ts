@@ -511,16 +511,6 @@ export class ChatView extends ItemView {
             this.messages.push({ role, content, timestamp: Date.now() });
         }
 
-        // 右键菜单：复制/保存选中的内容或整条消息
-        if (role === 'assistant') {
-            contentEl.addEventListener('contextmenu', (evt) => {
-                // 稍后执行，让浏览器先完成选区更新
-                setTimeout(() => {
-                    this.showAssistantContextMenu(evt, content);
-                }, 0);
-            });
-        }
-
         this.scrollToBottom();
         return contentEl;
     }
@@ -570,21 +560,42 @@ export class ChatView extends ItemView {
 
         const actionsRow = body.createDiv({ cls: 'fleurpilot-message-actions' });
 
-        // 保存笔记
+        // 获取当前消息的完整内容（用于保存/复制）
+        const contentEl = body.querySelector('.fleurpilot-message-content');
+        const fullContent = contentEl?.innerText || '';
+
+        // 保存笔记（选中文字时保存选中，否则保存整条）
         const saveBtn = actionsRow.createEl('button', {
             cls: 'fleurpilot-action-btn',
             attr: { 'aria-label': this.$('chat.actions.saveNote') },
         });
         setIcon(saveBtn, 'file-plus');
-        saveBtn.addEventListener('click', () => { void this.saveConversationAsNote(); });
+        saveBtn.addEventListener('click', () => {
+            const selection = window.getSelection()?.toString().trim() || '';
+            const textToSave = selection || fullContent;
+            if (selection) {
+                void this.saveSelectionAsNote(textToSave);
+            } else {
+                void this.saveAssistantMessageAsNote(textToSave);
+            }
+        });
 
-        // 复制
+        // 复制（选中文字时复制选中，否则复制整条）
         const copyBtn = actionsRow.createEl('button', {
             cls: 'fleurpilot-action-btn',
             attr: { 'aria-label': this.$('chat.actions.copy') },
         });
         setIcon(copyBtn, 'copy');
-        copyBtn.addEventListener('click', () => { void this.copyLastAssistantMessage(); });
+        copyBtn.addEventListener('click', async () => {
+            const selection = window.getSelection()?.toString().trim() || '';
+            const textToCopy = selection || fullContent;
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                new Notice(this.$('chat.notice.copied'));
+            } catch {
+                new Notice('Failed to copy');
+            }
+        });
 
         // 重新生成
         const regenerateBtn = actionsRow.createEl('button', {

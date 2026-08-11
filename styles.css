@@ -428,6 +428,8 @@
     padding: 4px 0;
     min-width: 0;
     max-width: 100%;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .fleurpilot-message-content *,
