@@ -511,6 +511,16 @@ export class ChatView extends ItemView {
             this.messages.push({ role, content, timestamp: Date.now() });
         }
 
+        // 右键菜单：复制/保存选中的内容或整条消息
+        if (role === 'assistant') {
+            contentEl.addEventListener('contextmenu', (evt) => {
+                // 稍后执行，让浏览器先完成选区更新
+                setTimeout(() => {
+                    this.showAssistantContextMenu(evt, content);
+                }, 0);
+            });
+        }
+
         this.scrollToBottom();
         return contentEl;
     }
@@ -629,6 +639,121 @@ export class ChatView extends ItemView {
         }
 
         await this.app.vault.create(filePath, content);
+        new Notice(this.$('chat.notice.saved'));
+    }
+
+    private showAssistantContextMenu(evt: MouseEvent, fullContent: string): void {
+        evt.preventDefault();
+
+        const selection = window.getSelection();
+        const selectedText = selection ? selection.toString().trim() : '';
+
+        const menu = new Menu();
+
+        if (selectedText) {
+            menu.addItem((item) => {
+                item.setTitle(this.$('chat.contextMenu.copySelection'));
+                item.setIcon('copy');
+                item.onClick(async () => {
+                    try {
+                        await navigator.clipboard.writeText(selectedText);
+                        new Notice(this.$('chat.notice.copied'));
+                    } catch {
+                        new Notice('Failed to copy');
+                    }
+                });
+            });
+
+            menu.addItem((item) => {
+                item.setTitle(this.$('chat.contextMenu.saveSelectionAsNote'));
+                item.setIcon('file-plus');
+                item.onClick(() => {
+                    void this.saveSelectionAsNote(selectedText);
+                });
+            });
+        } else {
+            menu.addItem((item) => {
+                item.setTitle(this.$('chat.actions.copy'));
+                item.setIcon('copy');
+                item.onClick(async () => {
+                    try {
+                        await navigator.clipboard.writeText(fullContent);
+                        new Notice(this.$('chat.notice.copied'));
+                    } catch {
+                        new Notice('Failed to copy');
+                    }
+                });
+            });
+
+            menu.addItem((item) => {
+                item.setTitle(this.$('chat.actions.saveNote'));
+                item.setIcon('file-plus');
+                item.onClick(() => {
+                    void this.saveAssistantMessageAsNote(fullContent);
+                });
+            });
+        }
+
+        menu.showAtPosition({ x: evt.clientX, y: evt.clientY });
+    }
+
+    private async saveSelectionAsNote(selection: string): Promise<void> {
+        const folderPath = this.plugin.settings.chatHistoryFolder || 'FleurPilot';
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
+
+        const firstLine = selection.split('\n')[0].slice(0, 30).replace(/[\\/:*?"<>|]/g, '').trim();
+        const title = `${firstLine} ${timestamp}`;
+
+        let content = `# ${title}\n\n`;
+        content += selection;
+
+        const folder = this.app.vault.getAbstractFileByPath(folderPath);
+        if (!folder) {
+            try {
+                await this.app.vault.createFolder(folderPath);
+            } catch { /* folder may already exist */ }
+        }
+
+        let filePath = `${folderPath}/${title}.md`;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(filePath)) {
+            filePath = `${folderPath}/${title} (${counter}).md`;
+            counter++;
+        }
+
+        await this.app.vault.create(filePath, content);
+        new Notice(this.$('chat.notice.saved'));
+    }
+
+    private async saveAssistantMessageAsNote(content: string): Promise<void> {
+        const folderPath = this.plugin.settings.chatHistoryFolder || 'FleurPilot';
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
+
+        const firstLine = content.split('\n')[0].slice(0, 30).replace(/[\\/:*?"<>|]/g, '').trim();
+        const title = `${this.$('chat.roleAssistant')} - ${firstLine} ${timestamp}`;
+
+        let noteContent = `# ${title}\n\n`;
+        noteContent += content;
+
+        const folder = this.app.vault.getAbstractFileByPath(folderPath);
+        if (!folder) {
+            try {
+                await this.app.vault.createFolder(folderPath);
+            } catch { /* folder may already exist */ }
+        }
+
+        let filePath = `${folderPath}/${title}.md`;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(filePath)) {
+            filePath = `${folderPath}/${title} (${counter}).md`;
+            counter++;
+        }
+
+        await this.app.vault.create(filePath, noteContent);
         new Notice(this.$('chat.notice.saved'));
     }
 
