@@ -93,7 +93,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             { type: 'heading', text: $('settings.modelConfig') },
 
             {
-                key: 'provider',
+                id: 'provider',
                 text: $('settings.provider'),
                 description: $('settings.providerDesc'),
                 type: 'dropdown',
@@ -101,28 +101,28 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 default: 'deepseek',
             },
             {
-                key: 'baseUrl',
+                id: 'baseUrl',
                 text: $('settings.baseUrl'),
                 description: $('settings.baseUrlDesc'),
                 type: 'text',
                 placeholder: $('settings.baseUrlPlaceholder'),
             },
             {
-                key: 'apiKey',
+                id: 'apiKey',
                 text: $('settings.apiKey'),
                 description: $('settings.apiKeyDesc'),
                 type: 'text',
                 placeholder: $('settings.apiKeyPlaceholder'),
             },
             {
-                key: 'model',
+                id: 'model',
                 text: $('settings.model'),
                 description: $('settings.modelDesc'),
                 type: 'text',
                 placeholder: $('settings.modelPlaceholder'),
             },
             {
-                key: 'reasoningModel',
+                id: 'reasoningModel',
                 text: $('settings.reasoningModel'),
                 description: $('settings.reasoningModelDesc'),
                 type: 'text',
@@ -132,14 +132,14 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             { type: 'heading', text: $('settings.generationParams') },
 
             {
-                key: 'systemPrompt',
+                id: 'systemPrompt',
                 text: $('settings.systemPrompt'),
                 description: $('settings.systemPromptDesc'),
                 type: 'textarea',
                 placeholder: $('settings.systemPromptPlaceholder'),
             },
             {
-                key: 'temperature',
+                id: 'temperature',
                 text: $('settings.temperature'),
                 description: $('settings.temperatureDesc'),
                 type: 'slider',
@@ -148,7 +148,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 step: 0.1,
             },
             {
-                key: 'maxTokens',
+                id: 'maxTokens',
                 text: $('settings.maxTokens'),
                 description: $('settings.maxTokensDesc'),
                 type: 'slider',
@@ -160,19 +160,19 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             { type: 'heading', text: $('settings.featureSettings') },
 
             {
-                key: 'enableContext',
+                id: 'enableContext',
                 text: $('settings.enableContext'),
                 description: $('settings.enableContextDesc'),
                 type: 'toggle',
             },
             {
-                key: 'enableInlineEdit',
+                id: 'enableInlineEdit',
                 text: $('settings.enableInlineEdit'),
                 description: $('settings.enableInlineEditDesc'),
                 type: 'toggle',
             },
             {
-                key: 'enableQuickCommands',
+                id: 'enableQuickCommands',
                 text: $('settings.enableQuickCommands'),
                 description: $('settings.enableQuickCommandsDesc'),
                 type: 'toggle',
@@ -181,13 +181,13 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             { type: 'heading', text: $('settings.chatHistory') },
 
             {
-                key: 'enableChatHistory',
+                id: 'enableChatHistory',
                 text: $('settings.enableChatHistory'),
                 description: $('settings.enableChatHistoryDesc'),
                 type: 'toggle',
             },
             {
-                key: 'chatHistoryFolder',
+                id: 'chatHistoryFolder',
                 text: $('settings.chatHistoryFolder'),
                 description: $('settings.chatHistoryFolderDesc'),
                 type: 'text',
