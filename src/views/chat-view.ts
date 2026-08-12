@@ -560,10 +560,6 @@ export class ChatView extends ItemView {
 
         const actionsRow = body.createDiv({ cls: 'fleurpilot-message-actions' });
 
-        // 获取当前消息的完整内容（用于保存/复制）
-        const contentEl = body.querySelector('.fleurpilot-message-content');
-        const fullContent = contentEl?.innerText || '';
-
         // 保存笔记（保存整个对话）
         const saveBtn = actionsRow.createEl('button', {
             cls: 'fleurpilot-action-btn',
