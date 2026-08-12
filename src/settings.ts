@@ -84,7 +84,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         const lang = this.plugin.settings.language;
         const $ = (key: string, fb?: string) => t(lang, key, fb);
 
-        this.containerEl.createEl('h2', { text: $('settings.modelConfig') });
+        new Setting(this.containerEl).setName($('settings.modelConfig')).setHeading();
 
         const presetOptions: Record<string, string> = {};
         for (const p of MODEL_PRESETS) presetOptions[p.id] = p.name;
@@ -100,7 +100,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     applyProviderPreset(this.plugin.settings);
                     await this.plugin.saveSettings();
-                    this.display();
+                    this.update();
                 }));
 
         new Setting(this.containerEl)
@@ -179,7 +179,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        this.containerEl.createEl('h2', { text: $('settings.generationParams') });
+        new Setting(this.containerEl).setName($('settings.generationParams')).setHeading();
 
         new Setting(this.containerEl)
             .setName($('settings.systemPrompt'))
@@ -197,9 +197,8 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .setDesc($('settings.temperatureDesc'))
             .addSlider(slider => slider
                 .setLimits(0, 1, 0.1)
-                .setValue(this.plugin.settings.temperature)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
+            .setValue(this.plugin.settings.temperature)
+            .onChange(async (value) => {
                     this.plugin.settings.temperature = value;
                     await this.plugin.saveSettings();
                 }));
@@ -209,14 +208,13 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             .setDesc($('settings.maxTokensDesc'))
             .addSlider(slider => slider
                 .setLimits(512, 16384, 512)
-                .setValue(this.plugin.settings.maxTokens)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
+            .setValue(this.plugin.settings.maxTokens)
+            .onChange(async (value) => {
                     this.plugin.settings.maxTokens = value;
                     await this.plugin.saveSettings();
                 }));
 
-        this.containerEl.createEl('h2', { text: $('settings.featureSettings') });
+        new Setting(this.containerEl).setName($('settings.featureSettings')).setHeading();
 
         new Setting(this.containerEl)
             .setName($('settings.enableContext'))
@@ -248,7 +246,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        this.containerEl.createEl('h2', { text: $('settings.chatHistory') });
+        new Setting(this.containerEl).setName($('settings.chatHistory')).setHeading();
 
         new Setting(this.containerEl)
             .setName($('settings.enableChatHistory'))
@@ -271,7 +269,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        this.containerEl.createEl('h2', { text: $('settings.language') });
+        new Setting(this.containerEl).setName($('settings.language')).setHeading();
 
         const langOptions: Record<string, string> = {};
         for (const l of Object.keys(LANG_LABELS)) langOptions[l] = LANG_LABELS[l as Lang];
@@ -285,7 +283,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.language = value as Lang;
                     await this.plugin.saveSettings();
-                    this.display();
+                    this.update();
                 }));
     }
 }
