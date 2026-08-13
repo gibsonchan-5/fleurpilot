@@ -666,11 +666,35 @@
 
 .mb-inline-edit-modal {
     padding: 0;
-    max-width: 640px;
-    width: 90vw;
-    max-height: 80vh;
+    max-width: 1000px;
+    width: 95vw;
+    max-height: 85vh;
     overflow: auto;
     border-radius: var(--mb-radius-lg);
+}
+
+/* 美化 Obsidian 默认关闭按钮 */
+.mb-inline-edit-modal .modal-close-button {
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--background-modifier-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--mb-transition);
+}
+
+.mb-inline-edit-modal .modal-close-button:hover {
+    background: var(--background-modifier-border);
+}
+
+.mb-inline-edit-modal .modal-close-button svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
 }
 
 .mb-modal-title {
