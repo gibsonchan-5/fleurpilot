@@ -373,8 +373,16 @@ export class ChatView extends ItemView {
         // 找到消息 body（用于推理区域渲染）
         const body = contentEl.closest('.fleurpilot-message-body') ?? contentEl.parentElement;
 
-        // 节流渲染：用 rAF 合并多个 chunk，最多 ~60fps
+        // 流式期间禁用平滑滚动，避免高度变化 + smooth scroll 叠加导致抖动
+        this.messageContainer.style.scrollBehavior = 'auto';
+
+        // 节流渲染：降低渲染频率（每 50ms 一次），减少 DOM 重建和抖动
+        let lastRenderTime = 0;
         const scheduleContentRender = () => {
+            const now = Date.now();
+            if (now - lastRenderTime < 50) return; // 降低到 20fps
+            lastRenderTime = now;
+            
             if (this.pendingContentUpdate) return;
             this.pendingContentUpdate = true;
             cancelAnimationFrame(this.rafId);
@@ -383,6 +391,7 @@ export class ChatView extends ItemView {
                 this.lastRenderedContent = this.currentAssistantContent;
                 contentEl.empty();
                 void this.renderMarkdown(contentEl, this.currentAssistantContent);
+                this.scrollToBottom();
             });
         };
 
@@ -404,10 +413,10 @@ export class ChatView extends ItemView {
                 (chunk) => {
                     this.currentAssistantContent += chunk;
                     scheduleContentRender();
-                    this.scrollToBottom();
                 },
                 () => {
-                    // 流式结束：确保最后一次渲染使用完整内容
+                    // 流式结束：恢复平滑滚动，并做最后一次完整的 Markdown 渲染
+                    this.messageContainer.style.scrollBehavior = 'smooth';
                     cancelAnimationFrame(this.rafId);
                     this.pendingContentUpdate = false;
                     this.pendingReasoningUpdate = false;

@@ -436,6 +436,13 @@
     -webkit-user-select: text;
 }
 
+/* 流式纯文本显示：保留换行符 */
+.fleurpilot-streaming-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
 .fleurpilot-message-content *,
 .fleurpilot-message-content p,
 .fleurpilot-message-content span,
