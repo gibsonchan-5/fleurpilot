@@ -31,6 +31,13 @@ export class ChatView extends ItemView {
     private isReasoningMode = false;
     private currentReasoningContent = '';
 
+    // 流式渲染节流
+    private pendingContentUpdate = false;
+    private pendingReasoningUpdate = false;
+    private lastRenderedContent = '';
+    private lastRenderedReasoning = '';
+    private rafId = 0;
+
     // UI 元素
     private messageContainer!: HTMLElement;
     private inputArea!: HTMLTextAreaElement;
@@ -363,16 +370,53 @@ export class ChatView extends ItemView {
         this.currentReasoningContent = '';
         this.updateUIState();
 
+        // 节流渲染：用 rAF 合并多个 chunk，最多 ~60fps
+        const scheduleContentRender = () => {
+            if (this.pendingContentUpdate) return;
+            this.pendingContentUpdate = true;
+            cancelAnimationFrame(this.rafId);
+            this.rafId = requestAnimationFrame(() => {
+                this.pendingContentUpdate = false;
+                this.lastRenderedContent = this.currentAssistantContent;
+                contentEl.empty();
+                void this.renderMarkdown(contentEl, this.currentAssistantContent);
+            });
+        };
+
+        const scheduleReasoningRender = () => {
+            if (this.pendingReasoningUpdate) return;
+            this.pendingReasoningUpdate = true;
+            cancelAnimationFrame(this.rafId);
+            this.rafId = requestAnimationFrame(() => {
+                this.pendingReasoningUpdate = false;
+                this.lastRenderedReasoning = this.currentReasoningContent;
+                this.renderReasoningSection(body, this.currentReasoningContent);
+            });
+        };
+
+        // 找到消息 body（用于推理区域渲染）
+        const body = assistantMsgEl.closest('.fleurpilot-message-body') ?? assistantMsgEl.parentElement;
+
         try {
             const llm = new LLMService(this.plugin.settings);
             await llm.sendMessage(
                 contextMessages,
                 (chunk) => {
                     this.currentAssistantContent += chunk;
-                    this.updateStreamingMessage(assistantMsgEl, this.currentAssistantContent, this.currentReasoningContent);
+                    scheduleContentRender();
                     this.scrollToBottom();
                 },
                 () => {
+                    // 流式结束：确保最后一次渲染使用完整内容
+                    cancelAnimationFrame(this.rafId);
+                    this.pendingContentUpdate = false;
+                    this.pendingReasoningUpdate = false;
+                    contentEl.empty();
+                    void this.renderMarkdown(contentEl, this.currentAssistantContent);
+                    if (this.currentReasoningContent) {
+                        this.renderReasoningSection(body, this.currentReasoningContent);
+                    }
+
                     this.messages.push({
                         role: 'assistant',
                         content: this.currentAssistantContent,
@@ -390,7 +434,7 @@ export class ChatView extends ItemView {
                 this.isReasoningMode
                     ? (reasoningChunk) => {
                         this.currentReasoningContent += reasoningChunk;
-                        this.updateStreamingMessage(assistantMsgEl, this.currentAssistantContent, this.currentReasoningContent);
+                        scheduleReasoningRender();
                     }
                     : undefined,
             );
@@ -513,6 +557,26 @@ export class ChatView extends ItemView {
 
         this.scrollToBottom();
         return contentEl;
+    }
+
+    private renderReasoningSection(body: HTMLElement | null, reasoningContent: string): void {
+        if (!body) return;
+        const reasoningEl = body.querySelector('.mb-reasoning-body') as HTMLElement;
+        if (!reasoningEl) return;
+        
+        reasoningEl.removeClass('mb-reasoning-hidden');
+        const rc = reasoningEl.querySelector('.mb-reasoning-content') as HTMLElement;
+        if (!rc) return;
+        
+        rc.empty();
+        const comp = new Component();
+        comp.load();
+        void MarkdownRenderer.render(
+            this.app, reasoningContent, rc,
+            this.app.workspace.getActiveFile()?.path ?? '',
+            comp,
+        );
+        comp.unload();
     }
 
     private updateStreamingMessage(contentEl: HTMLElement, content: string, reasoningContent?: string): void {
