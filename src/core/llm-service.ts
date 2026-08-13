@@ -62,6 +62,8 @@ export class LLMService {
         try {
             const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
+            // 使用 fetch 而非 requestUrl：SSE 流式输出需要 ReadableStream，
+            // Obsidian 的 requestUrl 不支持流式读取
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {

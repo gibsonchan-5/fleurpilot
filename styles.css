@@ -246,6 +246,11 @@
     scroll-behavior: smooth;
 }
 
+/* 流式期间禁用平滑滚动（替代 JS style 直接赋值） */
+.fleurpilot-messages.fp-scrolling-auto {
+    scroll-behavior: auto;
+}
+
 .fleurpilot-messages::-webkit-scrollbar {
     width: 6px;
 }
@@ -671,20 +676,21 @@
    内联编辑 Modal
    ═══════════════════════════════════════════════════ */
 
-/* 强制覆盖 Obsidian modal 容器宽度 */
-.modal-container:has(.mb-inline-edit-modal) .modal {
-    max-width: 1000px !important;
-    width: 95vw !important;
-    min-width: 0 !important;
-    max-height: 85vh !important;
-}
+/* 内联编辑 Modal 宽度通过 JS 设置（避免 :has 和 !important） */
 
 .mb-inline-edit-modal {
     padding: 0;
-    width: 100% !important;
     max-height: 85vh;
     overflow: auto;
     border-radius: var(--mb-radius-lg);
+}
+
+/* 宽屏 Modal（替代 :has + !important） */
+.modal.mb-wide-modal {
+    max-width: 1000px;
+    width: 95vw;
+    min-width: 0;
+    max-height: 85vh;
 }
 
 /* 美化 Obsidian 默认关闭按钮 */

@@ -60,6 +60,9 @@ export class InlineEditModal extends Modal {
         contentEl.empty();
         contentEl.addClass('mb-inline-edit-modal');
 
+        // 给 modal 元素添加宽屏 class（替代 CSS :has + !important）
+        this.modalEl.addClass('mb-wide-modal');
+
         // 标题
         new Setting(contentEl).setName(this.$('inline.title')).setHeading();
 

@@ -1,7 +1,7 @@
 // settings.ts - FleurPilot 配置
 // 使用 Obsidian 1.13+ 声明式设置 API
 // 移除 display() 方法以通过 obsidianmd/no-deprecated-display 规则审查
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, SettingDefinitionItem } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, LANG_LABELS, Lang } from './i18n';
 
@@ -72,6 +72,168 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: FleurPilotPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    /**
+     * Obsidian 1.13+ 声明式设置 API
+     * 让设置项出现在 Obsidian 设置搜索中
+     */
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        const $ = (key: string, fb?: string) => t(this.plugin.settings.language, key, fb);
+        const presetOptions: Record<string, string> = {};
+        for (const p of MODEL_PRESETS) presetOptions[p.id] = p.name;
+        const langOptions: Record<string, string> = {};
+        for (const l of Object.keys(LANG_LABELS)) langOptions[l] = LANG_LABELS[l as Lang];
+
+        return [
+            {
+                name: $('settings.provider'),
+                desc: $('settings.providerDesc'),
+                control: {
+                    type: 'dropdown',
+                    key: 'provider',
+                    options: presetOptions,
+                },
+            },
+            {
+                name: $('settings.baseUrl'),
+                desc: $('settings.baseUrlDesc'),
+                control: {
+                    type: 'text',
+                    key: 'baseUrl',
+                    placeholder: $('settings.baseUrlPlaceholder'),
+                },
+            },
+            {
+                name: $('settings.apiKey'),
+                desc: $('settings.apiKeyDesc'),
+                control: {
+                    type: 'text',
+                    key: 'apiKey',
+                    placeholder: $('settings.apiKeyPlaceholder'),
+                },
+            },
+            {
+                name: $('settings.model'),
+                desc: $('settings.modelDesc'),
+                control: {
+                    type: 'text',
+                    key: 'model',
+                    placeholder: $('settings.modelPlaceholder'),
+                },
+            },
+            {
+                name: $('settings.reasoningModel'),
+                desc: $('settings.reasoningModelDesc'),
+                control: {
+                    type: 'text',
+                    key: 'reasoningModel',
+                    placeholder: $('settings.reasoningModelPlaceholder'),
+                },
+            },
+            {
+                name: $('settings.testConnection'),
+                desc: $('settings.testConnectionDesc'),
+                action: async () => {
+                    const { LLMService } = await import('./core/llm-service');
+                    const llm = new LLMService(this.plugin.settings);
+                    let result = '';
+                    try {
+                        await llm.sendMessage(
+                            [{ role: 'user', content: $('settings.connectionTestPrompt') }],
+                            (chunk) => { result += chunk; },
+                            () => { /* done */ },
+                        );
+                        new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
+                    } catch (error: unknown) {
+                        const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
+                        new Notice($('notice.testFailed', { error: msg }));
+                    }
+                },
+            },
+            {
+                name: $('settings.systemPrompt'),
+                desc: $('settings.systemPromptDesc'),
+                control: {
+                    type: 'textarea',
+                    key: 'systemPrompt',
+                    placeholder: $('settings.systemPromptPlaceholder'),
+                    rows: 3,
+                },
+            },
+            {
+                name: $('settings.temperature'),
+                desc: $('settings.temperatureDesc'),
+                control: {
+                    type: 'slider',
+                    key: 'temperature',
+                    min: 0,
+                    max: 1,
+                    step: 0.1,
+                },
+            },
+            {
+                name: $('settings.maxTokens'),
+                desc: $('settings.maxTokensDesc'),
+                control: {
+                    type: 'slider',
+                    key: 'maxTokens',
+                    min: 512,
+                    max: 16384,
+                    step: 512,
+                },
+            },
+            {
+                name: $('settings.enableContext'),
+                desc: $('settings.enableContextDesc'),
+                control: {
+                    type: 'toggle',
+                    key: 'enableContext',
+                },
+            },
+            {
+                name: $('settings.enableInlineEdit'),
+                desc: $('settings.enableInlineEditDesc'),
+                control: {
+                    type: 'toggle',
+                    key: 'enableInlineEdit',
+                },
+            },
+            {
+                name: $('settings.enableQuickCommands'),
+                desc: $('settings.enableQuickCommandsDesc'),
+                control: {
+                    type: 'toggle',
+                    key: 'enableQuickCommands',
+                },
+            },
+            {
+                name: $('settings.enableChatHistory'),
+                desc: $('settings.enableChatHistoryDesc'),
+                control: {
+                    type: 'toggle',
+                    key: 'enableChatHistory',
+                },
+            },
+            {
+                name: $('settings.chatHistoryFolder'),
+                desc: $('settings.chatHistoryFolderDesc'),
+                control: {
+                    type: 'text',
+                    key: 'chatHistoryFolder',
+                    placeholder: 'FleurPilot',
+                },
+            },
+            {
+                name: $('settings.language'),
+                desc: $('settings.languageDesc'),
+                control: {
+                    type: 'dropdown',
+                    key: 'language',
+                    options: langOptions,
+                },
+            },
+        ];
     }
 
     /**

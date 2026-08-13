@@ -373,8 +373,8 @@ export class ChatView extends ItemView {
         // 找到消息 body（用于推理区域渲染）
         const body = contentEl.closest('.fleurpilot-message-body') ?? contentEl.parentElement;
 
-        // 流式期间禁用平滑滚动，避免高度变化 + smooth scroll 叠加导致抖动
-        this.messageContainer.style.scrollBehavior = 'auto';
+        // 流式期间禁用平滑滚动，用 CSS 类替代直接设置 style
+        this.messageContainer.addClass('fp-scrolling-auto');
 
         // 节流渲染：降低渲染频率（每 50ms 一次），减少 DOM 重建和抖动
         let lastRenderTime = 0;
@@ -386,7 +386,7 @@ export class ChatView extends ItemView {
             if (this.pendingContentUpdate) return;
             this.pendingContentUpdate = true;
             cancelAnimationFrame(this.rafId);
-            this.rafId = requestAnimationFrame(() => {
+            this.rafId = window.requestAnimationFrame(() => {
                 this.pendingContentUpdate = false;
                 this.lastRenderedContent = this.currentAssistantContent;
                 contentEl.empty();
@@ -399,7 +399,7 @@ export class ChatView extends ItemView {
             if (this.pendingReasoningUpdate) return;
             this.pendingReasoningUpdate = true;
             cancelAnimationFrame(this.rafId);
-            this.rafId = requestAnimationFrame(() => {
+            this.rafId = window.requestAnimationFrame(() => {
                 this.pendingReasoningUpdate = false;
                 this.lastRenderedReasoning = this.currentReasoningContent;
                 this.renderReasoningSection(body, this.currentReasoningContent);
@@ -415,8 +415,8 @@ export class ChatView extends ItemView {
                     scheduleContentRender();
                 },
                 () => {
-                    // 流式结束：恢复平滑滚动，并做最后一次完整的 Markdown 渲染
-                    this.messageContainer.style.scrollBehavior = 'smooth';
+                    // 流式结束：恢复平滑滚动，移除 CSS 类
+                    this.messageContainer.removeClass('fp-scrolling-auto');
                     cancelAnimationFrame(this.rafId);
                     this.pendingContentUpdate = false;
                     this.pendingReasoningUpdate = false;
