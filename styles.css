@@ -217,10 +217,14 @@
 }
 
 .mb-reasoning-body {
-    display: none;
     padding: 10px 12px;
     background: var(--background-primary);
     border-top: 1px solid var(--background-modifier-border);
+    display: block;
+}
+
+.mb-reasoning-body.mb-reasoning-hidden {
+    display: none;
 }
 
 .mb-reasoning-content {

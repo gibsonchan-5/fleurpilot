@@ -363,12 +363,15 @@ export class ChatView extends ItemView {
         this.addMessage('user', content);
 
         const contextMessages = await this.buildContextMessages(content);
-        const assistantMsgEl = this.addMessage('assistant', '', true, this.isReasoningMode);
+        const contentEl = this.addMessage('assistant', '', true, this.isReasoningMode);
 
         this.isStreaming = true;
         this.currentAssistantContent = '';
         this.currentReasoningContent = '';
         this.updateUIState();
+
+        // 找到消息 body（用于推理区域渲染）
+        const body = contentEl.closest('.fleurpilot-message-body') ?? contentEl.parentElement;
 
         // 节流渲染：用 rAF 合并多个 chunk，最多 ~60fps
         const scheduleContentRender = () => {
@@ -393,9 +396,6 @@ export class ChatView extends ItemView {
                 this.renderReasoningSection(body, this.currentReasoningContent);
             });
         };
-
-        // 找到消息 body（用于推理区域渲染）
-        const body = assistantMsgEl.closest('.fleurpilot-message-body') ?? assistantMsgEl.parentElement;
 
         try {
             const llm = new LLMService(this.plugin.settings);
@@ -441,7 +441,7 @@ export class ChatView extends ItemView {
         } catch (error: unknown) {
             this.isStreaming = false;
             this.updateUIState();
-            assistantMsgEl.remove();
+            contentEl.remove();
             const msg = error instanceof Error ? error.message : 'Unknown error';
             new Notice(`错误: ${msg}`);
         }
@@ -531,9 +531,9 @@ export class ChatView extends ItemView {
         if (role === 'assistant' && hasReasoning) {
             const reasoningSection = body.createDiv({ cls: 'mb-reasoning' });
             const toggle = reasoningSection.createDiv({ cls: 'mb-reasoning-toggle' });
-            const toggleIcon = toggle.createSpan({ cls: 'mb-reasoning-toggle-icon', text: '' });
+            const toggleIcon = toggle.createSpan({ cls: 'mb-reasoning-toggle-icon', text: '▸' });
             toggle.createSpan({ cls: 'mb-reasoning-toggle-label', text: this.$('chat.reasoningLabel') });
-            const reasoningBody = reasoningSection.createDiv({ cls: 'mb-reasoning-body' });
+            const reasoningBody = reasoningSection.createDiv({ cls: 'mb-reasoning-body mb-reasoning-hidden' });
             reasoningBody.createDiv({ cls: 'mb-reasoning-content' });
 
             toggle.addEventListener('click', () => {
