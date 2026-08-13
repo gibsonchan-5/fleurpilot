@@ -664,10 +664,17 @@
    内联编辑 Modal
    ═══════════════════════════════════════════════════ */
 
+/* 强制覆盖 Obsidian modal 容器宽度 */
+.modal-container:has(.mb-inline-edit-modal) .modal {
+    max-width: 1000px !important;
+    width: 95vw !important;
+    min-width: 0 !important;
+    max-height: 85vh !important;
+}
+
 .mb-inline-edit-modal {
     padding: 0;
-    max-width: 1000px;
-    width: 95vw;
+    width: 100% !important;
     max-height: 85vh;
     overflow: auto;
     border-radius: var(--mb-radius-lg);
@@ -783,10 +790,25 @@
     padding: 14px;
     border-radius: var(--mb-radius-md);
     font-size: var(--mb-font-size-base);
-    line-height: 1.6;
+    line-height: 1.7;
     max-height: 300px;
     overflow-y: auto;
+    overflow-x: hidden;
     border: 1px solid var(--background-modifier-border);
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.mb-diff-view span {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.mb-diff-keep,
+.mb-diff-add,
+.mb-diff-remove {
+    display: inline;
+    white-space: normal;
 }
 
 .mb-diff-keep {
