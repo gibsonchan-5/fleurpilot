@@ -28,7 +28,7 @@ export class LLMService {
     async sendMessage(
         messages: ChatMessage[],
         onChunk: (chunk: string) => void,
-        onEnd: () => void,
+        onEnd: () => void | Promise<void>,
         onReasoning?: (chunk: string) => void,
     ): Promise<void> {
         const { baseUrl, apiKey, model, reasoningModel, temperature, maxTokens, systemPrompt } = this.settings;
@@ -101,7 +101,7 @@ export class LLMService {
 
                     const data = trimmed.slice(6).trim();
                     if (data === '[DONE]') {
-                        onEnd();
+                        await onEnd();
                         return;
                     }
 

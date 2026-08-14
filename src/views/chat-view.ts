@@ -376,34 +376,74 @@ export class ChatView extends ItemView {
         // 流式期间禁用平滑滚动，用 CSS 类替代直接设置 style
         this.messageContainer.addClass('fp-scrolling-auto');
 
-        // 节流渲染：降低渲染频率（每 50ms 一次），减少 DOM 重建和抖动
-        let lastRenderTime = 0;
-        const scheduleContentRender = () => {
-            const now = Date.now();
-            if (now - lastRenderTime < 50) return; // 降低到 20fps
-            lastRenderTime = now;
-            
-            if (this.pendingContentUpdate) return;
-            this.pendingContentUpdate = true;
-            cancelAnimationFrame(this.rafId);
-            this.rafId = window.requestAnimationFrame(() => {
-                this.pendingContentUpdate = false;
-                this.lastRenderedContent = this.currentAssistantContent;
+        // 使用"离屏渲染 + 原子替换"模式，避免清空 DOM 后的闪烁
+        let isRenderingContent = false;
+        let contentDirty = false;
+        let isRenderingReasoning = false;
+        let reasoningDirty = false;
+
+        // 预创建离屏容器，用于渲染 markdown（必须脱离文档流）
+        const offscreenEl = document.createElement('div');
+        offscreenEl.style.position = 'absolute';
+        offscreenEl.style.left = '-9999px';
+        offscreenEl.style.top = '0';
+        offscreenEl.style.visibility = 'hidden';
+        this.containerEl.appendChild(offscreenEl);
+
+        const doContentRender = async () => {
+            if (isRenderingContent) { contentDirty = true; return; }
+            isRenderingContent = true;
+            contentDirty = false;
+            try {
+                const snapshot = this.currentAssistantContent;
+                this.lastRenderedContent = snapshot;
+                // 在离屏容器中渲染，不触发页面重绘
+                offscreenEl.empty();
+                await this.renderMarkdown(offscreenEl, snapshot);
+                // 原子性替换：把渲染好的内容一次性搬到目标容器
                 contentEl.empty();
-                void this.renderMarkdown(contentEl, this.currentAssistantContent);
-                this.scrollToBottom();
-            });
+                while (offscreenEl.firstChild) {
+                    contentEl.appendChild(offscreenEl.firstChild);
+                }
+                // 流式期间始终强制滚动到底部（DOM 更新完成后再滚动）
+                this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+            } finally {
+                isRenderingContent = false;
+                // 渲染期间如果有新内容到来，再渲染一次
+                if (contentDirty) {
+                    cancelAnimationFrame(this.rafId);
+                    this.rafId = requestAnimationFrame(() => doContentRender());
+                }
+            }
+        };
+
+        const scheduleContentRender = () => {
+            if (isRenderingContent) { contentDirty = true; return; }
+            cancelAnimationFrame(this.rafId);
+            this.rafId = requestAnimationFrame(() => doContentRender());
+        };
+
+        const doReasoningRender = async () => {
+            if (isRenderingReasoning) { reasoningDirty = true; return; }
+            isRenderingReasoning = true;
+            reasoningDirty = false;
+            try {
+                this.lastRenderedReasoning = this.currentReasoningContent;
+                this.renderReasoningSection(body, this.currentReasoningContent);
+                this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+            } finally {
+                isRenderingReasoning = false;
+                if (reasoningDirty) {
+                    cancelAnimationFrame(this.rafId);
+                    this.rafId = requestAnimationFrame(() => doReasoningRender());
+                }
+            }
         };
 
         const scheduleReasoningRender = () => {
-            if (this.pendingReasoningUpdate) return;
-            this.pendingReasoningUpdate = true;
+            if (isRenderingReasoning) { reasoningDirty = true; return; }
             cancelAnimationFrame(this.rafId);
-            this.rafId = window.requestAnimationFrame(() => {
-                this.pendingReasoningUpdate = false;
-                this.lastRenderedReasoning = this.currentReasoningContent;
-                this.renderReasoningSection(body, this.currentReasoningContent);
-            });
+            this.rafId = requestAnimationFrame(() => doReasoningRender());
         };
 
         try {
@@ -414,14 +454,14 @@ export class ChatView extends ItemView {
                     this.currentAssistantContent += chunk;
                     scheduleContentRender();
                 },
-                () => {
+                async () => {
                     // 流式结束：恢复平滑滚动，移除 CSS 类
                     this.messageContainer.removeClass('fp-scrolling-auto');
                     cancelAnimationFrame(this.rafId);
                     this.pendingContentUpdate = false;
                     this.pendingReasoningUpdate = false;
                     contentEl.empty();
-                    void this.renderMarkdown(contentEl, this.currentAssistantContent);
+                    await this.renderMarkdown(contentEl, this.currentAssistantContent);
                     if (this.currentReasoningContent) {
                         this.renderReasoningSection(body, this.currentReasoningContent);
                     }
@@ -433,6 +473,9 @@ export class ChatView extends ItemView {
                     });
                     this.isStreaming = false;
                     this.updateUIState();
+
+                    // 最终渲染后强制滚到底部
+                    this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
 
                     // 为最后一条 assistant 消息添加操作按钮
                     const lastAssistant = this.messageContainer.querySelector('.fleurpilot-assistant:last-of-type') as HTMLElement;

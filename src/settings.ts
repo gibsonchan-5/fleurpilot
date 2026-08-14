@@ -82,8 +82,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         const $ = (key: string, fb?: string) => t(this.plugin.settings.language, key, fb);
         const presetOptions: Record<string, string> = {};
         for (const p of MODEL_PRESETS) presetOptions[p.id] = p.name;
-        const langOptions: Record<string, string> = {};
-        for (const l of Object.keys(LANG_LABELS)) langOptions[l] = LANG_LABELS[l as Lang];
 
         return [
             {
@@ -222,15 +220,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     type: 'text',
                     key: 'chatHistoryFolder',
                     placeholder: 'FleurPilot',
-                },
-            },
-            {
-                name: $('settings.language'),
-                desc: $('settings.languageDesc'),
-                control: {
-                    type: 'dropdown',
-                    key: 'language',
-                    options: langOptions,
                 },
             },
         ];
@@ -429,23 +418,6 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.chatHistoryFolder = value;
                     await this.plugin.saveSettings();
-                }));
-
-        new Setting(this.containerEl).setName($('settings.language')).setHeading();
-
-        const langOptions: Record<string, string> = {};
-        for (const l of Object.keys(LANG_LABELS)) langOptions[l] = LANG_LABELS[l as Lang];
-
-        new Setting(this.containerEl)
-            .setName($('settings.language'))
-            .setDesc($('settings.languageDesc'))
-            .addDropdown(dropdown => dropdown
-                .addOptions(langOptions)
-                .setValue(this.plugin.settings.language)
-                .onChange(async (value) => {
-                    this.plugin.settings.language = value as Lang;
-                    await this.plugin.saveSettings();
-                    this.update();
                 }));
     }
 }
