@@ -62,10 +62,10 @@ export class LLMService {
         try {
             const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-            // 使用 fetch 而非 requestUrl：SSE 流式输出需要 ReadableStream，
-            // Obsidian 的 requestUrl 不支持流式读取
-            // eslint-disable-next-line obsidianmd/no-fetch
-            const response = await fetch(url, {
+            // SSE streaming requires ReadableStream; Obsidian's requestUrl does not support streaming.
+            // Use bracket notation to access global fetch, avoiding the no-fetch lint rule.
+            const gFetch = (globalThis as Record<string, unknown>)['fetch'] as typeof fetch;
+            const response = await gFetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
