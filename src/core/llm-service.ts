@@ -64,6 +64,7 @@ export class LLMService {
 
             // 使用 fetch 而非 requestUrl：SSE 流式输出需要 ReadableStream，
             // Obsidian 的 requestUrl 不支持流式读取
+            // eslint-disable-next-line obsidianmd/no-fetch
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -124,7 +125,7 @@ export class LLMService {
                 }
             }
 
-            onEnd();
+            await onEnd();
         } catch (error: unknown) {
             if (error instanceof Error && error.name === 'AbortError') {
                 throw new Error('请求已取消');

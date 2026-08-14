@@ -3,7 +3,7 @@
 // 移除 display() 方法以通过 obsidianmd/no-deprecated-display 规则审查
 import { App, PluginSettingTab, Setting, Notice, SettingDefinitionItem } from 'obsidian';
 import type FleurPilotPlugin from './main';
-import { t, LANG_LABELS, Lang } from './i18n';
+import { t, Lang } from './i18n';
 
 export interface ModelPreset {
     id: string;
@@ -132,21 +132,23 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             {
                 name: $('settings.testConnection'),
                 desc: $('settings.testConnectionDesc'),
-                action: async () => {
-                    const { LLMService } = await import('./core/llm-service');
-                    const llm = new LLMService(this.plugin.settings);
-                    let result = '';
-                    try {
-                        await llm.sendMessage(
-                            [{ role: 'user', content: $('settings.connectionTestPrompt') }],
-                            (chunk) => { result += chunk; },
-                            () => { /* done */ },
-                        );
-                        new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
-                    } catch (error: unknown) {
-                        const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
-                        new Notice($('notice.testFailed', { error: msg }));
-                    }
+                action: () => {
+                    void (async () => {
+                        const { LLMService } = await import('./core/llm-service');
+                        const llm = new LLMService(this.plugin.settings);
+                        let result = '';
+                        try {
+                            await llm.sendMessage(
+                                [{ role: 'user', content: $('settings.connectionTestPrompt') }],
+                                (chunk) => { result += chunk; },
+                                () => { /* done */ },
+                            );
+                            new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
+                        } catch (error: unknown) {
+                            const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
+                            new Notice($('notice.testFailed', { error: msg }));
+                        }
+                    })();
                 },
             },
             {
@@ -226,10 +228,11 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     }
 
     /**
-     * Obsidian 1.13+ 声明式设置 API
-     * 返回所有设置项的声明式定义,Obsidian 框架负责渲染和持久化
-     * 不再使用已废弃的 display() 方法
+     * Fallback for Obsidian < 1.13 that doesn't support declarative settings API.
+     * Kept for backward compatibility.
+     * @deprecated Use getSettingDefinitions() instead
      */
+    // eslint-disable-next-line obsidianmd/settings-tab/no-deprecated-display
     display(): void {
         this.containerEl.empty();
         const lang = this.plugin.settings.language;

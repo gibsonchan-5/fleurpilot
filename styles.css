@@ -16,6 +16,15 @@
     --mb-mono: 'SF Mono', 'SF Mono Square', 'Fira Code', 'JetBrains Mono', monospace;
 }
 
+/* ── 离屏渲染容器（隐藏，不触发重绘）── */
+.fp-offscreen-render {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 /* ── 主容器 ── */
 .fleurpilot-chat-view {
     display: flex;

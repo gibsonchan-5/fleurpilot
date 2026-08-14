@@ -383,12 +383,9 @@ export class ChatView extends ItemView {
         let reasoningDirty = false;
 
         // 预创建离屏容器，用于渲染 markdown（必须脱离文档流）
-        const offscreenEl = document.createElement('div');
-        offscreenEl.style.position = 'absolute';
-        offscreenEl.style.left = '-9999px';
-        offscreenEl.style.top = '0';
-        offscreenEl.style.visibility = 'hidden';
-        this.containerEl.appendChild(offscreenEl);
+        const offscreenEl = this.containerEl.createDiv({
+            cls: 'fp-offscreen-render',
+        });
 
         const doContentRender = async () => {
             if (isRenderingContent) { contentDirty = true; return; }
@@ -412,7 +409,7 @@ export class ChatView extends ItemView {
                 // 渲染期间如果有新内容到来，再渲染一次
                 if (contentDirty) {
                     cancelAnimationFrame(this.rafId);
-                    this.rafId = requestAnimationFrame(() => doContentRender());
+                    this.rafId = window.requestAnimationFrame(() => { void doContentRender(); });
                 }
             }
         };
@@ -420,7 +417,7 @@ export class ChatView extends ItemView {
         const scheduleContentRender = () => {
             if (isRenderingContent) { contentDirty = true; return; }
             cancelAnimationFrame(this.rafId);
-            this.rafId = requestAnimationFrame(() => doContentRender());
+            this.rafId = window.requestAnimationFrame(() => { void doContentRender(); });
         };
 
         const doReasoningRender = async () => {
@@ -435,7 +432,7 @@ export class ChatView extends ItemView {
                 isRenderingReasoning = false;
                 if (reasoningDirty) {
                     cancelAnimationFrame(this.rafId);
-                    this.rafId = requestAnimationFrame(() => doReasoningRender());
+                    this.rafId = window.requestAnimationFrame(() => { void doReasoningRender(); });
                 }
             }
         };
@@ -443,7 +440,7 @@ export class ChatView extends ItemView {
         const scheduleReasoningRender = () => {
             if (isRenderingReasoning) { reasoningDirty = true; return; }
             cancelAnimationFrame(this.rafId);
-            this.rafId = requestAnimationFrame(() => doReasoningRender());
+            this.rafId = window.requestAnimationFrame(() => { void doReasoningRender(); });
         };
 
         try {
