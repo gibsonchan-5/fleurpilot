@@ -360,9 +360,20 @@ export class ChatView extends ItemView {
         if (!content || this.isStreaming) return;
 
         this.inputArea.value = '';
+        
+        // 立即滚动到底部，然后再添加消息
+        this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+        
         this.addMessage('user', content);
 
-        const contextMessages = await this.buildContextMessages(content);
+        // 使用 requestAnimationFrame 异步构建上下文，避免阻塞 UI
+        const contextMessages = await new Promise<ChatMessage[]>((resolve) => {
+            requestAnimationFrame(async () => {
+                const msgs = await this.buildContextMessages(content);
+                resolve(msgs);
+            });
+        });
+        
         const contentEl = this.addMessage('assistant', '', true, this.isReasoningMode);
 
         this.isStreaming = true;
@@ -604,7 +615,8 @@ export class ChatView extends ItemView {
             this.messages.push({ role, content, timestamp: Date.now() });
         }
 
-        this.scrollToBottom();
+        // 用户发送消息或添加助手消息时，强制滚动到底部（无阈值限制）
+        this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
         return contentEl;
     }
 
