@@ -118,13 +118,13 @@ export class InlineEditModal extends Modal {
         this.followUpInput.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                this.handleFollowUp();
+                void this.handleFollowUp();
             }
         });
 
         const followUpBtnRow = this.followUpContainer.createDiv({ cls: 'mb-follow-up-btn-row' });
         const followUpSendBtn = followUpBtnRow.createEl('button', { text: '发送', cls: 'mb-btn mb-btn-primary' });
-        followUpSendBtn.addEventListener('click', () => this.handleFollowUp());
+        followUpSendBtn.addEventListener('click', () => { void this.handleFollowUp(); });
 
         // ── 首轮改写 ──
         const prompt = this.buildPrompt();

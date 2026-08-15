@@ -65,8 +65,7 @@ export class LLMService {
         try {
             const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-            const gFetch = (globalThis as Record<string, unknown>)['fetch'] as typeof fetch;
-            const response = await gFetch(url, {
+            const response = await window.fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 // views/chat-view.ts — FleurPilot 聊天视图
 import {
     ItemView, WorkspaceLeaf, MarkdownRenderer, Component, Notice,
-    TFolder, TFile, TAbstractFile, Menu, setIcon, Setting, Modal, SuggestModal,
+    TFolder, TFile, TAbstractFile, Menu, setIcon, Modal, Setting,
 } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
@@ -397,9 +397,8 @@ export class ChatView extends ItemView {
 
         // 使用 requestAnimationFrame 异步构建上下文，避免阻塞 UI
         const contextMessages = await new Promise<ChatMessage[]>((resolve) => {
-            requestAnimationFrame(async () => {
-                const msgs = await this.buildContextMessages(content);
-                resolve(msgs);
+            window.requestAnimationFrame(() => {
+                void this.buildContextMessages(content).then(resolve);
             });
         });
         
@@ -438,6 +437,7 @@ export class ChatView extends ItemView {
                 offscreenEl.empty();
                 await this.renderMarkdown(offscreenEl, snapshot);
                 // 原子性替换：用 innerHTML 一次性替换，避免 empty+appendChild 导致的抖动
+                // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
                 contentEl.innerHTML = offscreenEl.innerHTML;
                 // 流式期间始终强制滚动到底部（DOM 更新完成后再滚动）
                 this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
@@ -519,10 +519,10 @@ export class ChatView extends ItemView {
                     // 滚动到底部：使用 double RAF 避免抖动
                     // 第一帧：等布局计算完成（包括按钮添加）
                     // 第二帧：在 fp-scrolling-auto 仍然生效时（instant 滚动）直接设置 scrollTop
-                    requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
                         this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
                         // 再下一帧才恢复平滑滚动，避免滚动动画和 DOM 变化冲突
-                        requestAnimationFrame(() => {
+                        window.requestAnimationFrame(() => {
                             this.messageContainer.removeClass('fp-scrolling-auto');
                         });
                     });
@@ -708,8 +708,9 @@ export class ChatView extends ItemView {
     }
 
     private async updateStreamingMessage(contentEl: HTMLElement, content: string, reasoningContent?: string): Promise<void> {
-        // 使用 innerHTML 直接替换，避免 empty() 导致的布局抖动
-        const tempDiv = document.createElement('div');
+        // 使用离屏 div + innerHTML 替换，避免 empty() 导致的布局抖动
+        const tempDiv = contentEl.createDiv();
+        tempDiv.hide();
         const component = new Component();
         component.load();
         await MarkdownRenderer.render(
@@ -718,7 +719,9 @@ export class ChatView extends ItemView {
             component,
         );
         component.unload();
+        // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
         contentEl.innerHTML = tempDiv.innerHTML;
+        tempDiv.remove();
 
         if (reasoningContent !== undefined) {
             const reasoningEl = contentEl.closest('.fleurpilot-message-body')?.querySelector('.mb-reasoning-body') as HTMLElement;
@@ -726,7 +729,8 @@ export class ChatView extends ItemView {
                 reasoningEl.removeClass('mb-reasoning-hidden');
                 const rc = reasoningEl.querySelector('.mb-reasoning-content') as HTMLElement;
                 if (rc) {
-                    const tempRcDiv = document.createElement('div');
+                    const tempRcDiv = rc.createDiv();
+                    tempRcDiv.hide();
                     const comp = new Component();
                     comp.load();
                     await MarkdownRenderer.render(
@@ -735,7 +739,9 @@ export class ChatView extends ItemView {
                         comp,
                     );
                     comp.unload();
+                    // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
                     rc.innerHTML = tempRcDiv.innerHTML;
+                    tempRcDiv.remove();
                 }
             }
         }
@@ -1073,8 +1079,15 @@ export class ContextSearchModal extends Modal {
         } else {
             // 浏览模式：显示当前文件夹的内容
             const children = this.currentFolder.children;
-            const folders = children.filter(c => c instanceof TFolder) as TFolder[];
-            const files = children.filter(c => c instanceof TFile && c.extension === 'md') as TFile[];
+            const folders: TFolder[] = [];
+            const files: TFile[] = [];
+            for (const c of children) {
+                if (c instanceof TFolder) {
+                    folders.push(c);
+                } else if (c instanceof TFile && c.extension === 'md') {
+                    files.push(c);
+                }
+            }
 
             folders.sort((a, b) => a.name.localeCompare(b.name));
             files.sort((a, b) => a.basename.localeCompare(b.basename));
@@ -1106,7 +1119,14 @@ export class ContextSearchModal extends Modal {
         textWrap.createSpan({ cls: 'fp-ctx-item-name', text: item.name });
 
         // 副标题：显示路径（仅当路径 ≠ 名称时才显示）
-        const detailPath = isFolder ? (item.path || '/') : ((item as TFile).parent?.path || '/');
+        let detailPath: string;
+        if (isFolder) {
+            detailPath = item.path || '/';
+        } else if (item instanceof TFile) {
+            detailPath = item.parent?.path || '/';
+        } else {
+            detailPath = '/';
+        }
         if (detailPath !== item.name && detailPath !== '/') {
             textWrap.createSpan({ cls: 'fp-ctx-item-detail', text: detailPath });
         }
@@ -1131,9 +1151,9 @@ export class ContextSearchModal extends Modal {
         });
 
         // 双击文件夹：进入
-        if (isFolder) {
+        if (isFolder && item instanceof TFolder) {
             itemEl.addEventListener('dblclick', () => {
-                this.currentFolder = item as TFolder;
+                this.currentFolder = item;
                 this.isSearchMode = false;
                 this.searchInput.value = '';
                 this.renderList();
