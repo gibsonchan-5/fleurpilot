@@ -436,9 +436,12 @@ export class ChatView extends ItemView {
                 // 在离屏容器中渲染，不触发页面重绘
                 offscreenEl.empty();
                 await this.renderMarkdown(offscreenEl, snapshot);
-                // 原子性替换：用 innerHTML 一次性替换，避免 empty+appendChild 导致的抖动
-                // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
-                contentEl.innerHTML = offscreenEl.innerHTML;
+                // 原子性替换：迁移子节点，避免 empty+appendChild 导致的抖动
+                const renderedChildren = Array.from(offscreenEl.childNodes);
+                contentEl.empty();
+                for (const child of renderedChildren) {
+                    contentEl.appendChild(child);
+                }
                 // 流式期间始终强制滚动到底部（DOM 更新完成后再滚动）
                 this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
             } finally {
@@ -719,8 +722,12 @@ export class ChatView extends ItemView {
             component,
         );
         component.unload();
-        // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
-        contentEl.innerHTML = tempDiv.innerHTML;
+        // 迁移子节点替代 innerHTML，避免社区扫描器警告
+        const renderedChildren = Array.from(tempDiv.childNodes);
+        contentEl.empty();
+        for (const child of renderedChildren) {
+            contentEl.appendChild(child);
+        }
         tempDiv.remove();
 
         if (reasoningContent !== undefined) {
@@ -739,8 +746,12 @@ export class ChatView extends ItemView {
                         comp,
                     );
                     comp.unload();
-                    // eslint-disable-next-line obsidianmd/no-unsafe-innerhtml
-                    rc.innerHTML = tempRcDiv.innerHTML;
+                    // 迁移子节点替代 innerHTML
+                    const reasoningChildren = Array.from(tempRcDiv.childNodes);
+                    rc.empty();
+                    for (const child of reasoningChildren) {
+                        rc.appendChild(child);
+                    }
                     tempRcDiv.remove();
                 }
             }

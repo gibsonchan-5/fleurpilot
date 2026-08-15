@@ -79,7 +79,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
      * 声明式 API 的 control 不支持 onChange，通过此方法拦截值变更
      */
     setControlValue(key: string, value: unknown): void | Promise<void> {
-        super.setControlValue(key, value);
+        void super.setControlValue(key, value);
         if (key === 'provider' && typeof value === 'string') {
             const preset = MODEL_PRESETS.find(p => p.id === value);
             if (preset && preset.id !== 'custom') {
