@@ -132,23 +132,35 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             {
                 name: $('settings.testConnection'),
                 desc: $('settings.testConnectionDesc'),
-                action: () => {
-                    void (async () => {
-                        const { LLMService } = await import('./core/llm-service');
-                        const llm = new LLMService(this.plugin.settings);
-                        let result = '';
-                        try {
-                            await llm.sendMessage(
-                                [{ role: 'user', content: $('settings.connectionTestPrompt') }],
-                                (chunk) => { result += chunk; },
-                                () => { /* done */ },
-                            );
-                            new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
-                        } catch (error: unknown) {
-                            const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
-                            new Notice($('notice.testFailed', { error: msg }));
-                        }
-                    })();
+                render: (containerEl: HTMLElement) => {
+                    const btn = containerEl.createEl('button', {
+                        cls: 'mb-test-conn-btn',
+                    });
+                    btn.setText($('settings.testConnection'));
+                    btn.addEventListener('click', () => {
+                        const label = btn.textContent || '';
+                        btn.setText('测试中…');
+                        btn.disabled = true;
+                        void (async () => {
+                            const { LLMService } = await import('./core/llm-service');
+                            const llm = new LLMService(this.plugin.settings);
+                            let result = '';
+                            try {
+                                await llm.sendMessage(
+                                    [{ role: 'user', content: $('settings.connectionTestPrompt') }],
+                                    (chunk) => { result += chunk; },
+                                    () => { /* done */ },
+                                );
+                                new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
+                            } catch (error: unknown) {
+                                const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
+                                new Notice($('notice.testFailed', { error: msg }));
+                            } finally {
+                                btn.setText(label);
+                                btn.disabled = false;
+                            }
+                        })();
+                    });
                 },
             },
             {

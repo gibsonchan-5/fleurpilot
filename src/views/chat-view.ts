@@ -1,7 +1,7 @@
 // views/chat-view.ts — FleurPilot 聊天视图
 import {
     ItemView, WorkspaceLeaf, MarkdownRenderer, Component, Notice,
-    TFolder, Menu, setIcon, Setting,
+    TFolder, TFile, TAbstractFile, Menu, setIcon, Setting, Modal, SuggestModal,
 } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
@@ -15,7 +15,7 @@ interface ConversationMessage {
     timestamp: number;
 }
 
-type ContextMode = 'active' | 'all' | 'folder' | 'none';
+type ContextMode = 'active' | 'all' | 'custom' | 'none';
 
 export class ChatView extends ItemView {
     plugin: FleurPilotPlugin;
@@ -26,6 +26,8 @@ export class ChatView extends ItemView {
     // 上下文选择
     private contextMode: ContextMode = 'active';
     private selectedFolderPath = '';
+    private selectedCustomPaths: string[] = [];
+    private recentFolderPath = '';
 
     // 模式切换
     private isReasoningMode = false;
@@ -37,6 +39,9 @@ export class ChatView extends ItemView {
     private lastRenderedContent = '';
     private lastRenderedReasoning = '';
     private rafId = 0;
+
+    // 当前 LLM 服务实例（用于打断生成）
+    private currentLLM: LLMService | null = null;
 
     // UI 元素
     private messageContainer!: HTMLElement;
@@ -73,6 +78,10 @@ export class ChatView extends ItemView {
         this.addWelcomeMessage();
 
         this.activeLeafChangeRef = () => {
+            const file = this.app.workspace.getActiveFile();
+            if (file) {
+                this.trackRecentFolder(file);
+            }
             if (this.contextMode === 'active') {
                 this.updateContextButtonLabel();
             }
@@ -133,7 +142,7 @@ export class ChatView extends ItemView {
         const iconMap: Record<ContextMode, string> = {
             active: 'file-text',
             all: 'book-open',
-            folder: 'folder',
+            custom: 'search',
             none: 'x-circle',
         };
         setIcon(icon, iconMap[this.contextMode]);
@@ -141,11 +150,13 @@ export class ChatView extends ItemView {
         const labels: Record<ContextMode, string> = {
             active: this.getActiveFileName(),
             all: this.$('chat.contextAllNotes'),
-            folder: this.selectedFolderPath || this.$('chat.contextChooseFolder'),
+            custom: this.selectedCustomPaths.length > 0
+                ? this.selectedCustomPaths.map(p => p.split('/').pop()).join(', ')
+                : '其他文件夹或笔记',
             none: this.$('chat.contextNone'),
         };
-        labelSpan.setText(labels[this.contextMode]);
-        this.contextButton.setAttr('title', labels[this.contextMode]);
+        labelSpan.setText(`${labels[this.contextMode]} ▾`);
+        this.contextButton.setAttr('title', this.$('chat.contextClickToChange'));
     }
 
     private getActiveFileName(): string {
@@ -154,6 +165,12 @@ export class ChatView extends ItemView {
         const name = file.basename;
         const maxLen = 16;
         return name.length > maxLen ? `${name.slice(0, maxLen - 1)}…` : name;
+    }
+
+    private trackRecentFolder(file: TFile | null): void {
+        if (file && file.parent) {
+            this.recentFolderPath = file.parent.path;
+        }
     }
 
     private showContextMenu(event: MouseEvent): void {
@@ -179,18 +196,20 @@ export class ChatView extends ItemView {
 
         menu.addSeparator();
 
-        const folders = this.getVaultFolders();
-        for (const folder of folders) {
-            menu.addItem((item) => {
-                item.setTitle(`${folder.path}${this.contextMode === 'folder' && this.selectedFolderPath === folder.path ? '  ✓' : ''}`)
-                    .setIcon('folder')
-                    .onClick(() => {
-                        this.contextMode = 'folder';
-                        this.selectedFolderPath = folder.path;
+        menu.addItem((item) => {
+            const label = this.selectedCustomPaths.length > 0
+                ? `其他文件夹或笔记（${this.selectedCustomPaths.map(p => p.split('/').pop()).join(', ')}）`
+                : `其他文件夹或笔记`;
+            item.setTitle(`${label}${this.contextMode === 'custom' ? '  ✓' : ''}`)
+                .setIcon('folder-search')
+                .onClick(() => {
+                    new ContextSearchModal(this.app, (selectedPaths) => {
+                        this.contextMode = 'custom';
+                        this.selectedCustomPaths = selectedPaths;
                         this.updateContextButtonLabel();
-                    });
-            });
-        }
+                    }).open();
+                });
+        });
 
         menu.addSeparator();
 
@@ -206,7 +225,7 @@ export class ChatView extends ItemView {
         menu.showAtMouseEvent(event);
     }
 
-    private getVaultFolders(): TFolder[] {
+    private getAllFolders(): TFolder[] {
         const folders: TFolder[] = [];
         const root = this.app.vault.getRoot();
         const collect = (folder: TFolder) => {
@@ -219,6 +238,10 @@ export class ChatView extends ItemView {
         };
         collect(root);
         return folders;
+    }
+
+    private getAllFiles(): TFile[] {
+        return this.app.vault.getMarkdownFiles();
     }
 
     // ── 消息区域 ──
@@ -247,7 +270,13 @@ export class ChatView extends ItemView {
             attr: { title: this.$('chat.send') },
         });
         setIcon(this.sendButton, 'send');
-        this.sendButton.addEventListener('click', () => { void this.sendMessage(); });
+        this.sendButton.addEventListener('click', () => {
+            if (this.isStreaming) {
+                this.stopGeneration();
+            } else {
+                void this.sendMessage();
+            }
+        });
     }
 
     private createStatusIndicator(): void {
@@ -408,11 +437,8 @@ export class ChatView extends ItemView {
                 // 在离屏容器中渲染，不触发页面重绘
                 offscreenEl.empty();
                 await this.renderMarkdown(offscreenEl, snapshot);
-                // 原子性替换：把渲染好的内容一次性搬到目标容器
-                contentEl.empty();
-                while (offscreenEl.firstChild) {
-                    contentEl.appendChild(offscreenEl.firstChild);
-                }
+                // 原子性替换：用 innerHTML 一次性替换，避免 empty+appendChild 导致的抖动
+                contentEl.innerHTML = offscreenEl.innerHTML;
                 // 流式期间始终强制滚动到底部（DOM 更新完成后再滚动）
                 this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
             } finally {
@@ -456,39 +482,53 @@ export class ChatView extends ItemView {
 
         try {
             const llm = new LLMService(this.plugin.settings);
+            this.currentLLM = llm;
             await llm.sendMessage(
                 contextMessages,
                 (chunk) => {
                     this.currentAssistantContent += chunk;
                     scheduleContentRender();
                 },
-                async () => {
-                    // 流式结束：恢复平滑滚动，移除 CSS 类
-                    this.messageContainer.removeClass('fp-scrolling-auto');
+                async (cancelled: boolean) => {
+                    // 立即取消所有待处理的渲染任务
                     cancelAnimationFrame(this.rafId);
                     this.pendingContentUpdate = false;
                     this.pendingReasoningUpdate = false;
-                    contentEl.empty();
-                    await this.renderMarkdown(contentEl, this.currentAssistantContent);
-                    if (this.currentReasoningContent) {
-                        this.renderReasoningSection(body, this.currentReasoningContent);
-                    }
+                    this.currentLLM = null;
 
+                    // 完全跳过 onEnd 中的 markdown 重渲染 —— 流式期间 doContentRender 已实时渲染
+                    // 这是修复抖动的关键：不做任何 innerHTML 替换或 offscreen 渲染
+
+                    // 保存到消息历史
                     this.messages.push({
                         role: 'assistant',
                         content: this.currentAssistantContent,
                         timestamp: Date.now(),
                     });
+
+                    // 更新状态（同步，在 DOM 操作之前）
                     this.isStreaming = false;
                     this.updateUIState();
 
-                    // 最终渲染后强制滚到底部
-                    this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
-
-                    // 为最后一条 assistant 消息添加操作按钮
+                    // 添加操作按钮（同步 DOM 操作，会改变消息高度）
                     const lastAssistant = this.messageContainer.querySelector('.fleurpilot-assistant:last-of-type') as HTMLElement;
                     if (lastAssistant) {
                         this.addMessageActions(lastAssistant);
+                    }
+
+                    // 滚动到底部：使用 double RAF 避免抖动
+                    // 第一帧：等布局计算完成（包括按钮添加）
+                    // 第二帧：在 fp-scrolling-auto 仍然生效时（instant 滚动）直接设置 scrollTop
+                    requestAnimationFrame(() => {
+                        this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+                        // 再下一帧才恢复平滑滚动，避免滚动动画和 DOM 变化冲突
+                        requestAnimationFrame(() => {
+                            this.messageContainer.removeClass('fp-scrolling-auto');
+                        });
+                    });
+
+                    if (cancelled) {
+                        new Notice('已停止生成');
                     }
                 },
                 this.isReasoningMode
@@ -500,7 +540,12 @@ export class ChatView extends ItemView {
             );
         } catch (error: unknown) {
             this.isStreaming = false;
+            this.currentLLM = null;
             this.updateUIState();
+            this.messageContainer.removeClass('fp-scrolling-auto');
+            cancelAnimationFrame(this.rafId);
+            // cancel 不再 throw，打断走 onEnd(true) 路径
+            // catch 仅处理真正的网络/解析错误
             contentEl.remove();
             const msg = error instanceof Error ? error.message : 'Unknown error';
             new Notice(`错误: ${msg}`);
@@ -538,9 +583,9 @@ export class ChatView extends ItemView {
                 } catch { /* ignore */ }
             }
             contextText = `【全部笔记（共 ${files.length} 篇）】\n\n${parts.join('\n\n---\n\n')}`;
-        } else if (this.contextMode === 'folder' && this.selectedFolderPath) {
+        } else if (this.contextMode === 'recentFolder' && this.recentFolderPath) {
             const files = this.app.vault.getMarkdownFiles().filter(
-                (f) => f.path.startsWith(this.selectedFolderPath + '/'),
+                (f) => f.path.startsWith(this.recentFolderPath + '/'),
             );
             const parts: string[] = [];
             for (const file of files.slice(0, 10)) {
@@ -549,7 +594,29 @@ export class ChatView extends ItemView {
                     parts.push(`【${file.basename}】\n${content.slice(0, 2000)}`);
                 } catch { /* ignore */ }
             }
-            contextText = `【文件夹: ${this.selectedFolderPath}（共 ${files.length} 篇）】\n\n${parts.join('\n\n---\n\n')}`;
+            contextText = `【最近文件夹: ${this.recentFolderPath}（共 ${files.length} 篇）】\n\n${parts.join('\n\n---\n\n')}`;
+        } else if (this.contextMode === 'custom' && this.selectedCustomPaths.length > 0) {
+            const parts: string[] = [];
+            for (const path of this.selectedCustomPaths) {
+                const item = this.app.vault.getAbstractFileByPath(path);
+                if (item instanceof TFile && item.extension === 'md') {
+                    try {
+                        const content = await this.app.vault.read(item);
+                        parts.push(`【${item.basename}】\n${content.slice(0, 2000)}`);
+                    } catch { /* ignore */ }
+                } else if (item instanceof TFolder) {
+                    const files = this.app.vault.getMarkdownFiles().filter(
+                        (f) => f.path.startsWith(item.path + '/'),
+                    );
+                    for (const file of files.slice(0, 10)) {
+                        try {
+                            const content = await this.app.vault.read(file);
+                            parts.push(`【${file.basename}】\n${content.slice(0, 2000)}`);
+                        } catch { /* ignore */ }
+                    }
+                }
+            }
+            contextText = `【自定义上下文（共 ${parts.length} 篇）】\n\n${parts.join('\n\n---\n\n')}`;
         }
 
         if (contextText) {
@@ -640,9 +707,18 @@ export class ChatView extends ItemView {
         comp.unload();
     }
 
-    private updateStreamingMessage(contentEl: HTMLElement, content: string, reasoningContent?: string): void {
-        contentEl.empty();
-        void this.renderMarkdown(contentEl, content);
+    private async updateStreamingMessage(contentEl: HTMLElement, content: string, reasoningContent?: string): Promise<void> {
+        // 使用 innerHTML 直接替换，避免 empty() 导致的布局抖动
+        const tempDiv = document.createElement('div');
+        const component = new Component();
+        component.load();
+        await MarkdownRenderer.render(
+            this.app, content, tempDiv,
+            this.app.workspace.getActiveFile()?.path ?? '',
+            component,
+        );
+        component.unload();
+        contentEl.innerHTML = tempDiv.innerHTML;
 
         if (reasoningContent !== undefined) {
             const reasoningEl = contentEl.closest('.fleurpilot-message-body')?.querySelector('.mb-reasoning-body') as HTMLElement;
@@ -650,15 +726,16 @@ export class ChatView extends ItemView {
                 reasoningEl.removeClass('mb-reasoning-hidden');
                 const rc = reasoningEl.querySelector('.mb-reasoning-content') as HTMLElement;
                 if (rc) {
-                    rc.empty();
+                    const tempRcDiv = document.createElement('div');
                     const comp = new Component();
                     comp.load();
-                    void MarkdownRenderer.render(
-                        this.app, reasoningContent, rc,
+                    await MarkdownRenderer.render(
+                        this.app, reasoningContent, tempRcDiv,
                         this.app.workspace.getActiveFile()?.path ?? '',
                         comp,
                     );
                     comp.unload();
+                    rc.innerHTML = tempRcDiv.innerHTML;
                 }
             }
         }
@@ -810,6 +887,17 @@ export class ChatView extends ItemView {
         return null;
     }
 
+    /** 打断当前生成 */
+    private stopGeneration(): void {
+        if (this.currentLLM) {
+            // 【关键修复】调用 cancel() 会设置 _isCancelled 标志并中断流
+            // 但不要在这里手动更新状态，让 onEnd 回调来处理
+            // 这样可以避免重复操作和状态不一致
+            this.currentLLM.cancel();
+            new Notice('已停止生成');
+        }
+    }
+
     startNewChat(): void {
         // 如果开启了自动保存且有关联消息，先保存当前对话
         if (this.plugin.settings.enableChatHistory && this.messages.length > 0) {
@@ -824,12 +912,16 @@ export class ChatView extends ItemView {
     private updateUIState(): void {
         if (this.isStreaming) {
             this.sendButton.addClass('streaming');
-            this.sendButton.disabled = true;
+            this.sendButton.disabled = false; // 允许点击停止
+            this.sendButton.empty();
+            setIcon(this.sendButton, 'square');
             this.statusIndicator.removeClass('fleurpilot-status-hidden');
             this.statusIndicator.setText(this.$('chat.thinking'));
         } else {
             this.sendButton.removeClass('streaming');
             this.sendButton.disabled = false;
+            this.sendButton.empty();
+            setIcon(this.sendButton, 'send');
             this.statusIndicator.addClass('fleurpilot-status-hidden');
         }
     }
@@ -848,5 +940,223 @@ export class ChatView extends ItemView {
             this.app.workspace.off('active-leaf-change', this.activeLeafChangeRef);
             this.activeLeafChangeRef = null;
         }
+    }
+}
+
+// ── 上下文搜索 Modal（支持文件夹层级浏览） ──
+export class ContextSearchModal extends Modal {
+    private onSelect: (paths: string[]) => void;
+    private selectedPaths: Set<string> = new Set();
+    private currentFolder: TFolder;
+    private searchInput!: HTMLInputElement;
+    private listEl!: HTMLElement;
+    private breadcrumbEl!: HTMLElement;
+    private isSearchMode = false;
+
+    constructor(app: App, onSelect: (paths: string[]) => void) {
+        super(app);
+        this.onSelect = onSelect;
+        this.currentFolder = this.app.vault.getRoot();
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('fp-ctx-search-modal');
+        this.modalEl.addClass('fp-ctx-modal-wide');
+
+        // 标题
+        const titleEl = contentEl.createDiv({ cls: 'fp-ctx-modal-title' });
+        titleEl.setText('选择笔记或文件夹（点击选择，双击文件夹进入）');
+
+        // 搜索框
+        const searchWrap = contentEl.createDiv({ cls: 'fp-ctx-search-wrap' });
+        const searchIcon = searchWrap.createSpan({ cls: 'fp-ctx-search-icon' });
+        setIcon(searchIcon, 'search');
+        this.searchInput = searchWrap.createEl('input', {
+            type: 'text',
+            cls: 'fp-ctx-search-input',
+            attr: { placeholder: '输入关键词搜索…' },
+        });
+        this.searchInput.addEventListener('input', () => this.renderList());
+
+        // 面包屑导航
+        this.breadcrumbEl = contentEl.createDiv({ cls: 'fp-ctx-breadcrumb' });
+
+        // 列表
+        this.listEl = contentEl.createDiv({ cls: 'fp-ctx-list' });
+        this.renderList();
+
+        // 底部按钮
+        const btnRow = contentEl.createDiv({ cls: 'fp-ctx-btn-row' });
+        const cancelBtn = btnRow.createEl('button', { text: '取消', cls: 'fp-ctx-btn fp-ctx-btn-cancel' });
+        cancelBtn.addEventListener('click', () => this.close());
+
+        const confirmBtn = btnRow.createEl('button', { text: '确认选择', cls: 'fp-ctx-btn fp-ctx-btn-confirm' });
+        confirmBtn.addEventListener('click', () => {
+            if (this.selectedPaths.size > 0) {
+                this.onSelect(Array.from(this.selectedPaths));
+                this.close();
+            }
+        });
+
+        this.searchInput.focus();
+    }
+
+    private renderBreadcrumb(): void {
+        this.breadcrumbEl.empty();
+        if (this.isSearchMode) {
+            this.breadcrumbEl.addClass('fp-ctx-hidden');
+            return;
+        }
+        this.breadcrumbEl.removeClass('fp-ctx-hidden');
+
+        // 构建路径链
+        const pathParts: TFolder[] = [];
+        let folder: TFolder | null = this.currentFolder;
+        while (folder) {
+            pathParts.unshift(folder);
+            folder = folder.parent;
+        }
+
+        // 渲染面包屑
+        pathParts.forEach((f, idx) => {
+            const name = f.isRoot() ? '根目录' : f.name;
+            const crumb = this.breadcrumbEl.createSpan({ text: name, cls: 'fp-ctx-crumb' });
+
+            if (idx < pathParts.length - 1) {
+                this.breadcrumbEl.createSpan({ text: ' / ', cls: 'fp-ctx-crumb-separator' });
+            }
+
+            // 点击面包屑导航
+            crumb.addEventListener('click', () => {
+                this.currentFolder = f;
+                this.isSearchMode = false;
+                this.searchInput.value = '';
+                this.renderList();
+            });
+        });
+    }
+
+    private renderList(): void {
+        this.listEl.empty();
+        this.renderBreadcrumb();
+
+        const query = this.searchInput.value.toLowerCase().trim();
+        this.isSearchMode = query.length > 0;
+
+        if (this.isSearchMode) {
+            // 搜索模式：全库搜索
+            const allFolders = this.getAllFolders();
+            const allFiles = this.app.vault.getMarkdownFiles();
+
+            const matchedFolders = allFolders.filter(f =>
+                f.name.toLowerCase().includes(query) ||
+                f.path.toLowerCase().includes(query)
+            );
+
+            const matchedFiles = allFiles.filter(f =>
+                f.basename.toLowerCase().includes(query) ||
+                f.path.toLowerCase().includes(query)
+            );
+
+            for (const folder of matchedFolders.slice(0, 20)) {
+                this.renderItem(folder, 'folder');
+            }
+            for (const file of matchedFiles.slice(0, 30)) {
+                this.renderItem(file, 'file-text');
+            }
+
+            if (matchedFolders.length === 0 && matchedFiles.length === 0) {
+                this.listEl.createDiv({ cls: 'fp-ctx-empty', text: '没有找到匹配的内容' });
+            }
+        } else {
+            // 浏览模式：显示当前文件夹的内容
+            const children = this.currentFolder.children;
+            const folders = children.filter(c => c instanceof TFolder) as TFolder[];
+            const files = children.filter(c => c instanceof TFile && c.extension === 'md') as TFile[];
+
+            folders.sort((a, b) => a.name.localeCompare(b.name));
+            files.sort((a, b) => a.basename.localeCompare(b.basename));
+
+            for (const folder of folders) {
+                this.renderItem(folder, 'folder');
+            }
+            for (const file of files) {
+                this.renderItem(file, 'file-text');
+            }
+
+            if (folders.length === 0 && files.length === 0) {
+                this.listEl.createDiv({ cls: 'fp-ctx-empty', text: '此文件夹为空' });
+            }
+        }
+    }
+
+    private renderItem(item: TAbstractFile, icon: string): void {
+        const isFolder = item instanceof TFolder;
+        const itemEl = this.listEl.createDiv({ cls: 'fp-ctx-item' });
+        if (this.selectedPaths.has(item.path)) {
+            itemEl.addClass('fp-ctx-item-selected');
+        }
+
+        const iconEl = itemEl.createSpan({ cls: 'fp-ctx-item-icon' });
+        setIcon(iconEl, icon);
+
+        const textWrap = itemEl.createDiv({ cls: 'fp-ctx-item-text' });
+        textWrap.createSpan({ cls: 'fp-ctx-item-name', text: item.name });
+
+        // 副标题：显示路径（仅当路径 ≠ 名称时才显示）
+        const detailPath = isFolder ? (item.path || '/') : ((item as TFile).parent?.path || '/');
+        if (detailPath !== item.name && detailPath !== '/') {
+            textWrap.createSpan({ cls: 'fp-ctx-item-detail', text: detailPath });
+        }
+
+        // 右侧勾选标记
+        const checkmark = itemEl.createSpan({ cls: 'fp-ctx-item-check' });
+        if (this.selectedPaths.has(item.path)) {
+            setIcon(checkmark, 'check');
+        }
+
+        // 单击：选择/取消选择
+        itemEl.addEventListener('click', () => {
+            if (this.selectedPaths.has(item.path)) {
+                this.selectedPaths.delete(item.path);
+                itemEl.removeClass('fp-ctx-item-selected');
+                checkmark.empty();
+            } else {
+                this.selectedPaths.add(item.path);
+                itemEl.addClass('fp-ctx-item-selected');
+                setIcon(checkmark, 'check');
+            }
+        });
+
+        // 双击文件夹：进入
+        if (isFolder) {
+            itemEl.addEventListener('dblclick', () => {
+                this.currentFolder = item as TFolder;
+                this.isSearchMode = false;
+                this.searchInput.value = '';
+                this.renderList();
+            });
+        }
+    }
+
+    private getAllFolders(): TFolder[] {
+        const folders: TFolder[] = [];
+        const root = this.app.vault.getRoot();
+        const collect = (folder: TFolder) => {
+            for (const child of folder.children) {
+                if (child instanceof TFolder) {
+                    folders.push(child);
+                    collect(child);
+                }
+            }
+        };
+        collect(root);
+        return folders;
+    }
+
+    onClose() {
+        this.contentEl.empty();
     }
 }

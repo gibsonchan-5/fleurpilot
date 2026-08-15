@@ -20,6 +20,8 @@ interface StreamChunk {
 export class LLMService {
     private settings: FleurPilotSettings;
     private abortController: AbortController | null = null;
+    private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    private _isCancelled: boolean = false;
 
     constructor(settings: FleurPilotSettings) {
         this.settings = settings;
@@ -28,7 +30,7 @@ export class LLMService {
     async sendMessage(
         messages: ChatMessage[],
         onChunk: (chunk: string) => void,
-        onEnd: () => void | Promise<void>,
+        onEnd: (cancelled: boolean) => void | Promise<void>,
         onReasoning?: (chunk: string) => void,
     ): Promise<void> {
         const { baseUrl, apiKey, model, reasoningModel, temperature, maxTokens, systemPrompt } = this.settings;
@@ -58,12 +60,11 @@ export class LLMService {
             this.abortController.abort();
         }
         this.abortController = new AbortController();
+        this._isCancelled = false;
 
         try {
             const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-            // SSE streaming requires ReadableStream; Obsidian's requestUrl does not support streaming.
-            // Use bracket notation to access global fetch, avoiding the no-fetch lint rule.
             const gFetch = (globalThis as Record<string, unknown>)['fetch'] as typeof fetch;
             const response = await gFetch(url, {
                 method: 'POST',
@@ -84,12 +85,18 @@ export class LLMService {
             if (!reader) {
                 throw new Error('无法读取响应流');
             }
+            this.reader = reader;
 
             const decoder = new TextDecoder();
             let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
+                
+                // 检查是否被取消（在 done 之前检查，因为 reader.cancel() 返回 done:true）
+                if (this._isCancelled) {
+                    break;
+                }
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
@@ -102,7 +109,7 @@ export class LLMService {
 
                     const data = trimmed.slice(6).trim();
                     if (data === '[DONE]') {
-                        await onEnd();
+                        await onEnd(false);
                         return;
                     }
 
@@ -125,22 +132,41 @@ export class LLMService {
                 }
             }
 
-            await onEnd();
+            // 流结束：通知 onEnd 是否被取消
+            await onEnd(this._isCancelled);
         } catch (error: unknown) {
+            // AbortError: 如果是用户主动取消，走 onEnd(true) 路径
+            if (this._isCancelled) {
+                await onEnd(true);
+                return;
+            }
             if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('请求已取消');
+                await onEnd(true);
+                return;
             }
             if (error instanceof Error) {
                 throw error;
             }
             throw new Error('未知错误');
+        } finally {
+            this.reader = null;
         }
     }
 
     cancel(): void {
+        this._isCancelled = true;
+        // cancel reader 会让正在 await 的 read() 返回 { done: true }
+        if (this.reader) {
+            this.reader.cancel().catch(() => {});
+            // 注意：不要立即置 null，finally 中会清理
+        }
+        // abort 作为后备，确保 fetch 连接断开
         if (this.abortController) {
             this.abortController.abort();
-            this.abortController = null;
         }
+    }
+    
+    get isCancelled(): boolean {
+        return this._isCancelled;
     }
 }

@@ -6,10 +6,11 @@ import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
 import { WritingAssistantModal, WritingTask } from './modals/writing-assistant';
 import { t } from './i18n';
 
-/** 自定义输入 Modal（替代 prompt） */
+/** 自定义输入 Modal — 美化版 */
 class CustomInputModal extends Modal {
     private onSubmit: (value: string) => void;
-    private inputEl!: HTMLInputElement;
+    private textareaEl!: HTMLTextAreaElement;
+    private sendBtn!: HTMLButtonElement;
 
     constructor(app: App, onSubmit: (value: string) => void) {
         super(app);
@@ -18,20 +19,69 @@ class CustomInputModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-        new Setting(contentEl).setName('自定义指令').setHeading();
-        this.inputEl = contentEl.createEl('input', { type: 'text', cls: 'mb-custom-input' });
-        const btn = contentEl.createEl('button', { text: '确认' });
-        btn.addEventListener('click', () => {
-            this.onSubmit(this.inputEl.value);
-            this.close();
-        });
+        contentEl.empty();
+        contentEl.addClass('mb-custom-input-modal');
+        this.modalEl.addClass('mb-custom-modal');
 
-        this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                this.onSubmit(this.inputEl.value);
-                this.close();
+        // ── 头部 ──
+        const header = contentEl.createDiv({ cls: 'mb-custom-header' });
+        header.createSpan({ text: '✦', cls: 'mb-custom-header-icon' });
+        header.createEl('h3', { text: '自定义改写指令' });
+
+        // ── 快捷提示 ──
+        const chipRow = contentEl.createDiv({ cls: 'mb-custom-chips' });
+        const suggestions = ['改成文言文', '更幽默的语气', '精简到 100 字', '学术论文风格', '更口语化', '用比喻重写'];
+        for (const s of suggestions) {
+            const chip = chipRow.createSpan({ text: s, cls: 'mb-custom-chip' });
+            chip.addEventListener('click', () => {
+                this.textareaEl.value = s;
+                this.textareaEl.focus();
+                this.updateSendState();
+            });
+        }
+
+        // ── 输入区 ──
+        const wrap = contentEl.createDiv({ cls: 'mb-custom-input-wrap' });
+        this.textareaEl = wrap.createEl('textarea', {
+            cls: 'mb-custom-textarea',
+            attr: { placeholder: '输入改写要求… 例如：改成鲁迅的风格' },
+        });
+        this.textareaEl.addEventListener('input', () => this.updateSendState());
+        this.textareaEl.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.doSubmit();
             }
         });
+
+        // ── 底部 ──
+        const footer = contentEl.createDiv({ cls: 'mb-custom-footer' });
+        const hint = footer.createDiv({ cls: 'mb-custom-footer-hint' });
+        hint.createEl('kbd', { text: 'Enter' });
+        hint.createSpan({ text: ' 发送 ' });
+        hint.createEl('kbd', { text: '⇧' });
+        hint.createSpan({ text: ' 换行' });
+
+        const btnGroup = footer.createDiv({ cls: 'mb-custom-footer-btns' });
+        const cancelBtn = btnGroup.createEl('button', { text: '取消', cls: 'mb-btn mb-btn-cancel' });
+        cancelBtn.addEventListener('click', () => this.close());
+
+        this.sendBtn = btnGroup.createEl('button', { text: '发送', cls: 'mb-btn mb-btn-primary' });
+        this.sendBtn.disabled = true;
+        this.sendBtn.addEventListener('click', () => this.doSubmit());
+
+        this.textareaEl.focus();
+    }
+
+    private updateSendState() {
+        if (this.sendBtn) this.sendBtn.disabled = !this.textareaEl.value.trim();
+    }
+
+    private doSubmit() {
+        const v = this.textareaEl.value.trim();
+        if (!v) return;
+        this.onSubmit(v);
+        this.close();
     }
 
     onClose() {
