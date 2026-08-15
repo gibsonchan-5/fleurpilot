@@ -1,7 +1,7 @@
 // settings.ts - FleurPilot 配置
 // 使用 Obsidian 1.13+ 声明式设置 API
 // 移除 display() 方法以通过 obsidianmd/no-deprecated-display 规则审查
-import { App, PluginSettingTab, Setting, Notice, SettingDefinitionItem } from 'obsidian';
+import { App, PluginSettingTab, Notice, SettingDefinitionItem } from 'obsidian';
 import type FleurPilotPlugin from './main';
 import { t, Lang } from './i18n';
 
@@ -75,11 +75,28 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     }
 
     /**
+     * 重写 setControlValue：当 provider 变化时自动同步预设的 baseUrl 和 model
+     * 声明式 API 的 control 不支持 onChange，通过此方法拦截值变更
+     */
+    setControlValue(key: string, value: unknown): void | Promise<void> {
+        super.setControlValue(key, value);
+        if (key === 'provider' && typeof value === 'string') {
+            const preset = MODEL_PRESETS.find(p => p.id === value);
+            if (preset && preset.id !== 'custom') {
+                this.plugin.settings.baseUrl = preset.baseUrl;
+                this.plugin.settings.model = preset.model;
+                void this.plugin.saveSettings();
+                this.update();
+            }
+        }
+    }
+
+    /**
      * Obsidian 1.13+ 声明式设置 API
      * 让设置项出现在 Obsidian 设置搜索中
      */
     getSettingDefinitions(): SettingDefinitionItem[] {
-        const $ = (key: string, fb?: string) => t(this.plugin.settings.language, key, fb);
+        const $ = (key: string, fb?: string | Record<string, string>) => t(this.plugin.settings.language, key, fb);
         const presetOptions: Record<string, string> = {};
         for (const p of MODEL_PRESETS) presetOptions[p.id] = p.name;
 
@@ -132,35 +149,23 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             {
                 name: $('settings.testConnection'),
                 desc: $('settings.testConnectionDesc'),
-                render: (containerEl: HTMLElement) => {
-                    const btn = containerEl.createEl('button', {
-                        cls: 'mb-test-conn-btn',
-                    });
-                    btn.setText($('settings.testConnection'));
-                    btn.addEventListener('click', () => {
-                        const label = btn.textContent || '';
-                        btn.setText('测试中…');
-                        btn.disabled = true;
-                        void (async () => {
-                            const { LLMService } = await import('./core/llm-service');
-                            const llm = new LLMService(this.plugin.settings);
-                            let result = '';
-                            try {
-                                await llm.sendMessage(
-                                    [{ role: 'user', content: $('settings.connectionTestPrompt') }],
-                                    (chunk) => { result += chunk; },
-                                    () => { /* done */ },
-                                );
-                                new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
-                            } catch (error: unknown) {
-                                const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
-                                new Notice($('notice.testFailed', { error: msg }));
-                            } finally {
-                                btn.setText(label);
-                                btn.disabled = false;
-                            }
-                        })();
-                    });
+                action: () => {
+                    void (async () => {
+                        const { LLMService } = await import('./core/llm-service');
+                        const llm = new LLMService(this.plugin.settings);
+                        let result = '';
+                        try {
+                            await llm.sendMessage(
+                                [{ role: 'user', content: $('settings.connectionTestPrompt') }],
+                                (chunk) => { result += chunk; },
+                                () => { /* done */ },
+                            );
+                            new Notice($('notice.testSuccess', { response: result.slice(0, 30) }));
+                        } catch (error: unknown) {
+                            const msg = error instanceof Error ? error.message.slice(0, 50) : 'Unknown error';
+                            new Notice($('notice.testFailed', { error: msg }));
+                        }
+                    })();
                 },
             },
             {
@@ -221,7 +226,7 @@ export class FleurPilotSettingTab extends PluginSettingTab {
             },
             {
                 name: $('settings.enableChatHistory'),
-                desc: $('settings.enableChatHistoryDesc'),
+                desc: $('settings.chatHistoryDesc'),
                 control: {
                     type: 'toggle',
                     key: 'enableChatHistory',

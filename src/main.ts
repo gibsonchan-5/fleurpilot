@@ -1,5 +1,5 @@
 // main.ts — FleurPilot 插件入口
-import { App, Plugin, Notice, Editor, Menu, Modal, Setting } from 'obsidian';
+import { App, Plugin, Notice, Editor, Menu, Modal } from 'obsidian';
 import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab, applyProviderPreset, MODEL_PRESETS } from './settings';
 import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
