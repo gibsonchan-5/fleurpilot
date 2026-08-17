@@ -91,12 +91,43 @@ export class LLMService {
 
             while (true) {
                 const { done, value } = await reader.read();
-                
-                // 检查是否被取消（在 done 之前检查，因为 reader.cancel() 返回 done:true）
+
+                if (done) {
+                    // 最后一个 chunk 可能还有数据，先处理再退出
+                    if (value) {
+                        buffer += decoder.decode(value, { stream: false });
+                    }
+                    // 处理缓冲区中残留的 SSE 行
+                    const remainingLines = buffer.split('\n');
+                    for (const line of remainingLines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                        const data = trimmed.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data) as StreamChunk;
+                            const delta = parsed.choices?.[0]?.delta;
+                            if (delta) {
+                                const reasoningChunk = delta.reasoning_content;
+                                if (reasoningChunk && onReasoning) {
+                                    onReasoning(reasoningChunk);
+                                }
+                                const content = delta.content;
+                                if (content) {
+                                    onChunk(content);
+                                }
+                            }
+                        } catch {
+                            // 忽略解析错误
+                        }
+                    }
+                    break;
+                }
+
+                // 检查是否被取消（在 done 之后检查）
                 if (this._isCancelled) {
                     break;
                 }
-                if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
@@ -112,6 +143,29 @@ export class LLMService {
                         return;
                     }
 
+                    try {
+                        const parsed = JSON.parse(data) as StreamChunk;
+                        const delta = parsed.choices?.[0]?.delta;
+                        if (delta) {
+                            const reasoningChunk = delta.reasoning_content;
+                            if (reasoningChunk && onReasoning) {
+                                onReasoning(reasoningChunk);
+                            }
+                            const content = delta.content;
+                            if (content) {
+                                onChunk(content);
+                            }
+                        }
+                    } catch {
+                        // 忽略解析错误
+                    }
+                }
+            }
+
+            // 处理循环退出后缓冲区中可能残留的最后一行
+            if (buffer.trim() && buffer.trim().startsWith('data: ')) {
+                const data = buffer.trim().slice(6).trim();
+                if (data !== '[DONE]') {
                     try {
                         const parsed = JSON.parse(data) as StreamChunk;
                         const delta = parsed.choices?.[0]?.delta;
