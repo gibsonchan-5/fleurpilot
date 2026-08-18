@@ -493,7 +493,15 @@ export class ChatView extends ItemView {
                     scheduleContentRender();
                 },
                 async (cancelled: boolean) => {
-                    // 立即取消所有待处理的渲染任务
+                    // 在取消之前，先确保最后一次渲染被执行
+                    // 因为最后一个 chunk 可能已经调用了 scheduleContentRender()，
+                    // 如果直接 cancelAnimationFrame 会导致最后的数据不显示
+                    if (this.currentAssistantContent !== this.lastRenderedContent) {
+                        await doContentRender();
+                    }
+                    if (this.currentReasoningContent !== this.lastRenderedReasoning) {
+                        await doReasoningRender();
+                    }
                     cancelAnimationFrame(this.rafId);
                     this.pendingContentUpdate = false;
                     this.pendingReasoningUpdate = false;
