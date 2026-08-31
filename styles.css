@@ -599,7 +599,7 @@
 }
 
 .fleurpilot-input {
-    flex: 1;
+    width: 100%;
     resize: none;
     border: none;
     border-radius: var(--mb-radius-xl);
@@ -609,10 +609,11 @@
     font-family: var(--mb-font);
     font-size: var(--mb-font-size-base);
     line-height: 1.5;
-    min-height: 44px;
-    max-height: 170px;
+    height: 80px;
     transition: background var(--mb-transition), box-shadow var(--mb-transition);
     outline: none;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .fleurpilot-input::placeholder {
@@ -696,8 +697,8 @@
 
 /* 宽屏 Modal（替代 :has + !important） */
 .modal.mb-wide-modal {
-    max-width: 1000px;
-    width: 95vw;
+    max-width: 800px;
+    width: 80vw;
     min-width: 0;
     max-height: 85vh;
     overflow: auto;
@@ -785,8 +786,6 @@
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    max-height: 150px;
-    overflow-y: auto;
     border: 1px solid var(--background-modifier-border);
 }
 
@@ -826,58 +825,7 @@
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    max-height: 300px;
-    overflow-y: auto;
     border: 1px solid var(--background-modifier-border);
-}
-
-/* Diff 视图 */
-.mb-diff-view {
-    background: var(--background-primary);
-    padding: 14px;
-    border-radius: var(--mb-radius-md);
-    font-size: var(--mb-font-size-base);
-    line-height: 1.7;
-    max-height: 300px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    border: 1px solid var(--background-modifier-border);
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-.mb-diff-view span {
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-.mb-diff-keep,
-.mb-diff-add,
-.mb-diff-remove {
-    display: inline;
-    white-space: normal;
-}
-
-.mb-diff-keep {
-    padding: 1px 3px;
-    color: var(--text-normal);
-}
-
-.mb-diff-add {
-    padding: 1px 3px;
-    background: rgba(52, 199, 89, 0.10);
-    color: var(--text-normal);
-    border-radius: 2px;
-    border-bottom: 1.5px solid #34c759;
-}
-
-.mb-diff-remove {
-    padding: 1px 3px;
-    background: rgba(255, 59, 48, 0.06);
-    color: var(--text-muted);
-    text-decoration: line-through;
-    border-radius: 2px;
-    border-bottom: 1.5px solid #ff3b30;
 }
 
 .mb-button-container {
@@ -1388,57 +1336,7 @@
    多轮对话改写弹窗样式
 ═══════════════════════════════════════════════════ */
 
-.mb-conversation-log {
-    max-height: 300px;
-    overflow-y: auto;
-    padding: 16px 20px;
-    background: var(--background-secondary);
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.mb-conversation-bubble {
-    margin-bottom: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 6px;
-    line-height: 1.6;
-}
-
-.mb-user-bubble {
-    /* 用户气泡无特殊背景 */
-}
-
-.mb-assistant-bubble {
-    /* AI 气泡无特殊背景 */
-}
-
-.mb-bubble-label {
-    font-size: var(--mb-font-size-sm);
-    font-weight: 600;
-    color: var(--text-accent);
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.mb-bubble-content {
-    font-size: var(--mb-font-size-sm);
-    line-height: 1.6;
-    color: var(--text-normal);
-    white-space: pre-wrap;
-    word-break: break-word;
-    flex: 1;
-    min-width: 0;
-}
-
-.mb-diff-container {
-    padding: 16px 20px;
-}
-
-.mb-diff-hidden {
-    display: none;
-}
-
+/* ── 追问区 ── */
 .mb-follow-up-container {
     padding: 16px 20px;
     border-top: 1px solid var(--background-modifier-border);

@@ -20,6 +20,13 @@ export const MODEL_PRESETS: ModelPreset[] = [
     { id: 'custom', name: '自定义', baseUrl: '', model: '' },
 ];
 
+export interface InlineEditModalSize {
+    width: number;
+    height: number;
+    offsetX?: number;
+    offsetY?: number;
+}
+
 export interface FleurPilotSettings {
     provider: string;
     baseUrl: string;
@@ -35,6 +42,7 @@ export interface FleurPilotSettings {
     enableChatHistory: boolean;
     chatHistoryFolder: string;
     language: Lang;
+    inlineEditModalSize?: InlineEditModalSize;
 }
 
 export const DEFAULT_SETTINGS: FleurPilotSettings = {

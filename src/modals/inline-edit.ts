@@ -2,7 +2,6 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
-import { wordDiff, mergeDiffParts, renderDiffInto } from '../utils/diff';
 import { t } from '../i18n';
 
 export type InlineEditAction =
@@ -43,8 +42,6 @@ export class InlineEditModal extends Modal {
     private loadingEl!: HTMLElement;
     private followUpContainer!: HTMLElement;
     private followUpInput!: HTMLTextAreaElement;
-    private diffContainer!: HTMLElement;
-    private conversationLog!: HTMLElement;
 
     constructor(
         app: App,
@@ -74,8 +71,12 @@ export class InlineEditModal extends Modal {
         this.modalEl.addClass('mb-wide-modal');
         this.addResizeHandle();
 
+        // 延迟恢复上次保存的窗口大小和位置（等 modal 渲染完成）
+        setTimeout(() => this.restoreModalSize(), 100);
+
         // 标题
         new Setting(contentEl).setName(this.$('inline.title')).setHeading();
+        this.addDragHandle();
 
         // 原文区域（可折叠）
         const originalEl = contentEl.createDiv({ cls: 'mb-original-section' });
@@ -88,12 +89,8 @@ export class InlineEditModal extends Modal {
             originalHeader.classList.toggle('mb-collapsed');
         });
 
-        // 对话记录区（滚动的聊天记录）
-        this.conversationLog = contentEl.createDiv({ cls: 'mb-conversation-log' });
-
-        // 改写结果区域
+        // 结果展示区域
         const resultEl = contentEl.createDiv({ cls: 'mb-result-section' });
-        resultEl.createDiv({ text: this.$('inline.result'), cls: 'mb-section-label' });
 
         this.loadingEl = resultEl.createDiv({ cls: 'mb-loading' });
         this.loadingEl.setText(this.$('inline.loading'));
@@ -101,13 +98,10 @@ export class InlineEditModal extends Modal {
         this.previewEl = resultEl.createDiv({ cls: 'mb-preview' });
         this.previewEl.addClass('mb-preview-hidden');
 
-        this.diffContainer = resultEl.createDiv({ cls: 'mb-diff-container' });
-        this.diffContainer.addClass('mb-diff-hidden');
-
         // 追问输入区（初始隐藏）
         this.followUpContainer = contentEl.createDiv({ cls: 'mb-follow-up-container mb-follow-up-hidden' });
         const followUpLabel = this.followUpContainer.createDiv({ cls: 'mb-follow-up-label' });
-        followUpLabel.createSpan({ text: '💬 继续沟通' });
+        followUpLabel.createSpan({ text: '继续沟通' });
         followUpLabel.createSpan({ text: '（对改写结果提更多要求）', cls: 'mb-follow-up-hint' });
 
         const followUpInputWrap = this.followUpContainer.createDiv({ cls: 'mb-follow-up-input-wrap' });
@@ -130,9 +124,6 @@ export class InlineEditModal extends Modal {
         const prompt = this.buildPrompt();
         this.conversationMessages = [{ role: 'user' as const, content: prompt }];
 
-        // 添加用户气泡到对话记录
-        this.addUserBubble(this.getActionLabel());
-
         const llm = new LLMService(this.plugin.settings);
         let fullResponse = '';
 
@@ -144,14 +135,15 @@ export class InlineEditModal extends Modal {
                     this.previewEl.removeClass('mb-preview-hidden');
                     this.previewEl.setText(fullResponse);
                     this.loadingEl.addClass('mb-loading-hidden');
+                    this.scrollToBottom();
                 },
                 () => {
                     this.result = fullResponse;
                     this.conversationMessages.push({ role: 'assistant' as const, content: fullResponse });
-                    // 添加 AI 回复气泡到对话记录
-                    this.addAssistantBubble(fullResponse);
-                    this.showDiffView();
+                    // 显示操作按钮和追问区
+                    this.showActionButtons();
                     this.showFollowUp();
+                    this.scrollToBottom();
                 },
             );
         } catch (error: unknown) {
@@ -159,41 +151,6 @@ export class InlineEditModal extends Modal {
             this.loadingEl.setText(`错误: ${msg}`);
             this.loadingEl.addClass('mb-error');
         }
-    }
-
-    private addUserBubble(label: string) {
-        const bubble = this.conversationLog.createDiv({ cls: 'mb-conversation-bubble mb-user-bubble' });
-        const labelEl = bubble.createSpan({ cls: 'mb-bubble-label' });
-        labelEl.setText('你');
-        const contentEl = bubble.createSpan({ cls: 'mb-bubble-content' });
-        contentEl.setText(label);
-        this.conversationLog.scrollTop = this.conversationLog.scrollHeight;
-    }
-
-    private addAssistantBubble(content: string) {
-        const bubble = this.conversationLog.createDiv({ cls: 'mb-conversation-bubble mb-assistant-bubble' });
-        const labelEl = bubble.createSpan({ cls: 'mb-bubble-label' });
-        labelEl.setText('FleurPilot');
-        const contentEl = bubble.createSpan({ cls: 'mb-bubble-content' });
-        contentEl.setText(content);
-        this.conversationLog.scrollTop = this.conversationLog.scrollHeight;
-    }
-
-    private getActionLabel(): string {
-        if (this.action === 'custom' && this.customInstruction) {
-            return this.customInstruction;
-        }
-        const labels: Record<InlineEditAction, string> = {
-            explain: '解释',
-            simplify: '精简',
-            expand: '扩写',
-            polish: '润色',
-            translate_zh: '翻译为中文',
-            translate_en: 'Translate to English',
-            proofread: '校对',
-            custom: '自定义',
-        };
-        return labels[this.action] || '改写';
     }
 
     private buildPrompt(): string {
@@ -205,19 +162,7 @@ export class InlineEditModal extends Modal {
         return `${actionPrompt}\n\n${this.selectedText}\n\n请直接输出修改后的文字，不要添加任何解释。`;
     }
 
-    private showDiffView() {
-        if (!this.result) return;
-
-        this.diffContainer.empty();
-        this.diffContainer.removeClass('mb-diff-hidden');
-
-        const diff = wordDiff(this.selectedText, this.result);
-        const merged = mergeDiffParts(diff);
-        renderDiffInto(this.diffContainer, merged);
-
-        // 隐藏流式预览区
-        this.previewEl.addClass('mb-preview-hidden');
-
+    private showActionButtons() {
         // 按钮区域（只添加一次）
         if (!this.contentEl.querySelector('.mb-button-container')) {
             const btnContainer = this.contentEl.createDiv({ cls: 'mb-button-container' });
@@ -250,15 +195,11 @@ export class InlineEditModal extends Modal {
         this.followUpInput.value = '';
         this.followUpInput.disabled = true;
 
-        // 隐藏 diff，显示流式预览
-        this.diffContainer.addClass('mb-diff-hidden');
+        // 显示流式预览
         this.previewEl.removeClass('mb-preview-hidden');
         this.previewEl.setText('');
         this.loadingEl.removeClass('mb-loading-hidden');
         this.loadingEl.setText(this.$('inline.loading'));
-
-        // 添加用户追问气泡
-        this.addUserBubble(instruction);
 
         // 追加到对话历史
         this.conversationMessages.push({ role: 'user' as const, content: instruction });
@@ -273,15 +214,15 @@ export class InlineEditModal extends Modal {
                     fullResponse += chunk;
                     this.previewEl.setText(fullResponse);
                     this.loadingEl.addClass('mb-loading-hidden');
+                    this.scrollToBottom();
                 },
                 () => {
                     this.result = fullResponse;
                     this.conversationMessages.push({ role: 'assistant' as const, content: fullResponse });
-                    this.addAssistantBubble(fullResponse);
                     this.isStreaming = false;
                     this.followUpInput.disabled = false;
-                    this.showDiffView();
                     this.showFollowUp();
+                    this.scrollToBottom();
                 },
             );
         } catch (error: unknown) {
@@ -293,17 +234,63 @@ export class InlineEditModal extends Modal {
         }
     }
 
+    close() {
+        // 在 modal 从 DOM 移除之前保存尺寸和位置
+        this.saveModalSize();
+        super.close();
+    }
+
     onClose() {
         this.contentEl.empty();
+    }
+
+    /** 恢复上次保存的窗口大小 */
+    private restoreModalSize() {
+        const saved = this.plugin.settings.inlineEditModalSize;
+        if (!saved) return;
+
+        // 用 !important 覆盖 CSS 中的 width/max-width 规则
+        if (saved.width) {
+            this.modalEl.style.setProperty('width', `${saved.width}px`, 'important');
+            this.modalEl.style.setProperty('max-width', `${saved.width}px`, 'important');
+        }
+        if (saved.height) {
+            this.modalEl.style.height = `${saved.height}px`;
+            this.modalEl.style.setProperty('max-height', '95vh', 'important');
+        }
+    }
+
+    /** 保存当前窗口大小和位置 */
+    private saveModalSize() {
+        const rect = this.modalEl.getBoundingClientRect();
+        if (rect.width < 480 || rect.height < 360) return;
+
+        // 计算相对于屏幕中心的偏移量
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const modalCenterX = rect.left + rect.width / 2;
+        const modalCenterY = rect.top + rect.height / 2;
+        const offsetX = Math.round(modalCenterX - centerX);
+        const offsetY = Math.round(modalCenterY - centerY);
+
+        this.plugin.settings.inlineEditModalSize = {
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            offsetX,
+            offsetY,
+        };
+        void this.plugin.saveSettings();
     }
 
     /** 添加右下角拖拽手柄，支持调整窗口大小 */
     private addResizeHandle() {
         const handle = this.modalEl.createDiv({ cls: 'mb-resize-handle' });
         let startX = 0, startY = 0, startW = 0, startH = 0;
+        let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
         const onMouseDown = (e: MouseEvent) => {
             e.preventDefault();
+            e.stopPropagation();
             startX = e.pageX;
             startY = e.pageY;
             const rect = this.modalEl.getBoundingClientRect();
@@ -323,8 +310,79 @@ export class InlineEditModal extends Modal {
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => this.saveModalSize(), 50);
         };
 
         handle.addEventListener('mousedown', onMouseDown);
+    }
+
+    /** 滚动 modal 到底部 */
+    private scrollToBottom() {
+        if (!this.previewEl || this.previewEl.classList.contains('mb-preview-hidden')) return;
+        setTimeout(() => {
+            // 遍历祖先，找到实际有滚动的元素
+            let el: HTMLElement | null = this.previewEl;
+            while (el && el !== document.body) {
+                if (el.scrollHeight > el.clientHeight + 2) {
+                    el.scrollTop = el.scrollHeight;
+                    return;
+                }
+                el = el.parentElement;
+            }
+        }, 50);
+    }
+
+    /** 添加标题栏拖拽，支持移动窗口位置 */
+    private addDragHandle() {
+        const header = this.contentEl.querySelector('.setting-item-heading');
+        if (!header) return;
+
+        header.style.cursor = 'move';
+
+        let startX = 0, startY = 0, startOffsetX = 0, startOffsetY = 0;
+        let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const onMouseDown = (e: MouseEvent) => {
+            if (e.button !== 0) return;
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'BUTTON' || target.closest('button')) return;
+
+            e.preventDefault();
+            startX = e.pageX;
+            startY = e.pageY;
+
+            const saved = this.plugin.settings.inlineEditModalSize;
+            startOffsetX = saved?.offsetX ?? 0;
+            startOffsetY = saved?.offsetY ?? 0;
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            const deltaX = e.pageX - startX;
+            const deltaY = e.pageY - startY;
+            const newOffsetX = startOffsetX + deltaX;
+            const newOffsetY = startOffsetY + deltaY;
+
+            // 用 position: fixed 定位内部 .modal 元素（不破坏滚动链）
+            const modal = this.modalEl.querySelector('.modal') as HTMLElement;
+            if (modal) {
+                modal.style.setProperty('position', 'fixed', 'important');
+                modal.style.setProperty('top', `${newOffsetY}px`, 'important');
+                modal.style.setProperty('left', `${newOffsetX}px`, 'important');
+                modal.style.setProperty('margin', '0', 'important');
+            }
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => this.saveModalSize(), 50);
+        };
+
+        header.addEventListener('mousedown', onMouseDown);
     }
 }
