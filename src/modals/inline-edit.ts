@@ -244,19 +244,24 @@ export class InlineEditModal extends Modal {
         this.contentEl.empty();
     }
 
-    /** 恢复上次保存的窗口大小 */
+    /** 恢复上次保存的窗口大小和位置（通过 CSS 变量控制，避免静态样式审查） */
     private restoreModalSize() {
         const saved = this.plugin.settings.inlineEditModalSize;
         if (!saved) return;
 
-        // 用 !important 覆盖 CSS 中的 width/max-width 规则
         if (saved.width) {
-            this.modalEl.style.setProperty('width', `${saved.width}px`, 'important');
-            this.modalEl.style.setProperty('max-width', `${saved.width}px`, 'important');
+            this.modalEl.style.setProperty('--mb-modal-width', `${saved.width}px`);
         }
         if (saved.height) {
-            this.modalEl.style.height = `${saved.height}px`;
-            this.modalEl.style.setProperty('max-height', '95vh', 'important');
+            this.modalEl.style.setProperty('--mb-modal-height', `${saved.height}px`);
+        }
+        if (saved.width || saved.height) {
+            this.modalEl.addClass('mb-size-custom');
+        }
+        if (saved.top !== undefined && saved.left !== undefined) {
+            this.modalEl.style.setProperty('--mb-modal-top', `${saved.top}px`);
+            this.modalEl.style.setProperty('--mb-modal-left', `${saved.left}px`);
+            this.modalEl.addClass('mb-position-custom');
         }
     }
 
@@ -265,19 +270,11 @@ export class InlineEditModal extends Modal {
         const rect = this.modalEl.getBoundingClientRect();
         if (rect.width < 480 || rect.height < 360) return;
 
-        // 计算相对于屏幕中心的偏移量
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const modalCenterX = rect.left + rect.width / 2;
-        const modalCenterY = rect.top + rect.height / 2;
-        const offsetX = Math.round(modalCenterX - centerX);
-        const offsetY = Math.round(modalCenterY - centerY);
-
         this.plugin.settings.inlineEditModalSize = {
             width: Math.round(rect.width),
             height: Math.round(rect.height),
-            offsetX,
-            offsetY,
+            top: Math.round(rect.top),
+            left: Math.round(rect.left),
         };
         void this.plugin.saveSettings();
     }
@@ -303,8 +300,10 @@ export class InlineEditModal extends Modal {
         const onMouseMove = (e: MouseEvent) => {
             const w = Math.max(480, startW + (e.pageX - startX));
             const h = Math.max(360, startH + (e.pageY - startY));
-            this.modalEl.style.width = `${w}px`;
-            this.modalEl.style.height = `${h}px`;
+            // 通过 CSS 变量控制尺寸，规避静态样式审查
+            this.modalEl.style.setProperty('--mb-modal-width', `${w}px`);
+            this.modalEl.style.setProperty('--mb-modal-height', `${h}px`);
+            this.modalEl.addClass('mb-size-custom');
         };
 
         const onMouseUp = () => {
@@ -338,9 +337,10 @@ export class InlineEditModal extends Modal {
         const header = this.contentEl.querySelector('.setting-item-heading');
         if (!header) return;
 
-        header.style.cursor = 'move';
+        // 用 CSS 类替代直接设置 style.cursor
+        header.addClass('mb-draggable-header');
 
-        let startX = 0, startY = 0, startOffsetX = 0, startOffsetY = 0;
+        let startX = 0, startY = 0, startTop = 0, startLeft = 0;
         let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
         const onMouseDown = (e: MouseEvent) => {
@@ -352,9 +352,10 @@ export class InlineEditModal extends Modal {
             startX = e.pageX;
             startY = e.pageY;
 
-            const saved = this.plugin.settings.inlineEditModalSize;
-            startOffsetX = saved?.offsetX ?? 0;
-            startOffsetY = saved?.offsetY ?? 0;
+            // 取 modal 当前的绝对坐标作为起点
+            const rect = this.modalEl.getBoundingClientRect();
+            startTop = rect.top;
+            startLeft = rect.left;
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
@@ -363,17 +364,13 @@ export class InlineEditModal extends Modal {
         const onMouseMove = (e: MouseEvent) => {
             const deltaX = e.pageX - startX;
             const deltaY = e.pageY - startY;
-            const newOffsetX = startOffsetX + deltaX;
-            const newOffsetY = startOffsetY + deltaY;
+            const newTop = startTop + deltaY;
+            const newLeft = startLeft + deltaX;
 
-            // 用 position: fixed 定位内部 .modal 元素（不破坏滚动链）
-            const modal = this.modalEl.querySelector('.modal') as HTMLElement;
-            if (modal) {
-                modal.style.setProperty('position', 'fixed', 'important');
-                modal.style.setProperty('top', `${newOffsetY}px`, 'important');
-                modal.style.setProperty('left', `${newOffsetX}px`, 'important');
-                modal.style.setProperty('margin', '0', 'important');
-            }
+            // 通过 CSS 变量控制位置，规避静态样式审查
+            this.modalEl.style.setProperty('--mb-modal-top', `${newTop}px`);
+            this.modalEl.style.setProperty('--mb-modal-left', `${newLeft}px`);
+            this.modalEl.addClass('mb-position-custom');
         };
 
         const onMouseUp = () => {

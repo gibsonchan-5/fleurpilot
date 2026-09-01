@@ -23,8 +23,8 @@ export const MODEL_PRESETS: ModelPreset[] = [
 export interface InlineEditModalSize {
     width: number;
     height: number;
-    offsetX?: number;
-    offsetY?: number;
+    top?: number;
+    left?: number;
 }
 
 export interface FleurPilotSettings {

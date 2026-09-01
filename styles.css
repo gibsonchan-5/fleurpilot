@@ -704,6 +704,28 @@
     overflow: auto;
 }
 
+/* 用户自定义尺寸（通过 CSS 变量控制） */
+.modal.mb-wide-modal.mb-size-custom {
+    width: var(--mb-modal-width);
+    height: var(--mb-modal-height);
+    max-width: var(--mb-modal-width);
+    max-height: var(--mb-modal-height);
+}
+
+/* 用户自定义位置（通过 CSS 变量控制） */
+.modal.mb-wide-modal.mb-position-custom {
+    position: fixed;
+    top: var(--mb-modal-top, 100px);
+    left: var(--mb-modal-left, 100px);
+    margin: 0;
+}
+
+/* 标题栏可拖拽 */
+.mb-draggable-header {
+    cursor: move;
+    user-select: none;
+}
+
 /* 可调整大小的 Modal */
 .modal.mb-resizable {
     resize: both;
