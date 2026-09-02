@@ -4,7 +4,7 @@
 
 ![Obsidian](https://img.shields.io/badge/Obsidian-1.0+-purple)
 ![License](https://img.shields.io/badge/license-MIT-green)
-[![Release](https://img.shields.io/badge/release-0.3.0-blue)](https://github.com/gibsonchan-5/fleurpilot/releases)
+[![Release](https://img.shields.io/badge/release-1.5.0-blue)](https://github.com/gibsonchan-5/fleurpilot/releases)
 
 [English](#english) | [中文](#中文)
 
@@ -138,7 +138,11 @@ npm run build
 
 API Key is stored locally in your vault's plugin data file (`data.json`). Please keep it safe and do not share with others.
 
+Note content (including the current note / selected folder notes used as context) is sent **only** to the LLM API endpoint you configure (e.g. DeepSeek, Qwen, GLM, SiliconFlow, or a custom endpoint). No telemetry, analytics, or third-party tracking is included.
+
 > API Key 存储在 vault 的插件数据文件（`data.json`）中，请妥善保管，勿与他人分享。
+>
+> 笔记内容（含作为上下文的当前笔记 / 所选文件夹笔记）**仅**发送至你在设置中配置的 LLM API 地址（如 DeepSeek、通义千问、智谱、硅基流动或自定义端点）。本插件不含任何遥测、统计或第三方追踪代码。
 
 ---
 

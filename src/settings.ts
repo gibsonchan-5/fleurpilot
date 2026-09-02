@@ -37,6 +37,14 @@ export interface FleurPilotSettings {
     temperature: number;
     maxTokens: number;
     enableContext: boolean;
+    enableInlineContext: boolean;
+    /** 内联编辑的自定义上下文来源（文件夹或笔记路径）；空数组 = 默认当前笔记 */
+    inlineContextPaths: string[];
+    /** 内联编辑各动作的自定义提示词，留空表示使用内置默认 */
+    inlinePolishPrompt: string;
+    inlineExpandPrompt: string;
+    inlineShortenPrompt: string;
+    inlineContinuePrompt: string;
     enableInlineEdit: boolean;
     enableQuickCommands: boolean;
     enableChatHistory: boolean;
@@ -55,6 +63,12 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
     temperature: 0.7,
     maxTokens: 4096,
     enableContext: true,
+    enableInlineContext: true,
+    inlineContextPaths: [],
+    inlinePolishPrompt: '',
+    inlineExpandPrompt: '',
+    inlineShortenPrompt: '',
+    inlineContinuePrompt: '',
     enableInlineEdit: true,
     enableQuickCommands: true,
     enableChatHistory: false,
@@ -214,6 +228,54 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 control: {
                     type: 'toggle',
                     key: 'enableContext',
+                },
+            },
+            {
+                name: $('settings.enableInlineContext'),
+                desc: $('settings.enableInlineContextDesc'),
+                control: {
+                    type: 'toggle',
+                    key: 'enableInlineContext',
+                },
+            },
+            {
+                name: $('settings.inlinePolishPrompt'),
+                desc: $('settings.inlinePromptDesc'),
+                control: {
+                    type: 'textarea',
+                    key: 'inlinePolishPrompt',
+                    placeholder: $('settings.inlinePromptPlaceholder'),
+                    rows: 2,
+                },
+            },
+            {
+                name: $('settings.inlineExpandPrompt'),
+                desc: $('settings.inlinePromptDesc'),
+                control: {
+                    type: 'textarea',
+                    key: 'inlineExpandPrompt',
+                    placeholder: $('settings.inlinePromptPlaceholder'),
+                    rows: 2,
+                },
+            },
+            {
+                name: $('settings.inlineShortenPrompt'),
+                desc: $('settings.inlinePromptDesc'),
+                control: {
+                    type: 'textarea',
+                    key: 'inlineShortenPrompt',
+                    placeholder: $('settings.inlinePromptPlaceholder'),
+                    rows: 2,
+                },
+            },
+            {
+                name: $('settings.inlineContinuePrompt'),
+                desc: $('settings.inlinePromptDesc'),
+                control: {
+                    type: 'textarea',
+                    key: 'inlineContinuePrompt',
+                    placeholder: $('settings.inlinePromptPlaceholder'),
+                    rows: 2,
                 },
             },
             {

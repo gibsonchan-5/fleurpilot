@@ -164,6 +164,7 @@ export default class FleurPilotPlugin extends Plugin {
                         { id: 'polish', label: this.$('menu.polish') },
                         { id: 'simplify', label: this.$('menu.shorten') },
                         { id: 'expand', label: this.$('menu.expand') },
+                        { id: 'continue', label: this.$('menu.continue') },
                         { id: 'translate_zh', label: this.$('menu.translateCN') },
                         { id: 'translate_en', label: this.$('menu.translateEN') },
                         { id: 'proofread', label: this.$('menu.proofread') },
@@ -174,7 +175,7 @@ export default class FleurPilotPlugin extends Plugin {
                             sub.setTitle(act.label).onClick(() => {
                                 new InlineEditModal(
                                     this.app, this, selected, act.id, '',
-                                    (result) => editor.replaceSelection(result)
+                                    (result) => this.applyEditResult(editor, act.id, result)
                                 ).open();
                             });
                         });
@@ -202,6 +203,7 @@ export default class FleurPilotPlugin extends Plugin {
         this.registerInlineEditCommand('explain', this.$('command.explain'));
         this.registerInlineEditCommand('simplify', this.$('command.shorten'));
         this.registerInlineEditCommand('expand', this.$('command.expand'));
+        this.registerInlineEditCommand('continue', this.$('command.continue'));
         this.registerInlineEditCommand('polish', this.$('command.polish'));
         this.registerInlineEditCommand('translate_zh', this.$('command.translateCN'));
         this.registerInlineEditCommand('translate_en', this.$('command.translateEN'));
@@ -312,19 +314,41 @@ export default class FleurPilotPlugin extends Plugin {
         }
     }
 
+    /**
+     * 应用改写结果到编辑器。
+     * 续写（continue）保留原文、在选区末尾追加；其余动作用结果替换选中文本。
+     */
+    private applyEditResult(editor: Editor, action: InlineEditAction, result: string) {
+        if (action === 'continue') {
+            // 只在选区末尾插入，原文保持不动
+            editor.replaceRange(result, editor.getCursor('to'));
+        } else {
+            editor.replaceSelection(result);
+        }
+    }
+
+    /** 获取光标前的文本，供无选区续写时作为上下文（最多约 3000 字符） */
+    private getPrecedingText(editor: Editor): string {
+        const cursor = editor.getCursor();
+        const from = { line: Math.max(0, cursor.line - 100), ch: 0 };
+        return editor.getRange(from, cursor).slice(-3000);
+    }
+
     private registerInlineEditCommand(action: InlineEditAction, name: string) {
         this.addCommand({
             id: `inline-edit-${action}`,
             name,
             editorCallback: (editor: Editor) => {
-                const selectedText = editor.getSelection();
+                // 续写允许无选区：取光标前的内容作为上下文，直接在光标处接着写
+                const selectedText = editor.getSelection()
+                    || (action === 'continue' ? this.getPrecedingText(editor) : '');
                 if (!selectedText) {
                     new Notice(this.$('notice.selectText'));
                     return;
                 }
                 new InlineEditModal(
                     this.app, this, selectedText, action, '',
-                    (result) => editor.replaceSelection(result)
+                    (result) => this.applyEditResult(editor, action, result)
                 ).open();
             },
         });

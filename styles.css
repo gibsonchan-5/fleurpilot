@@ -695,21 +695,26 @@
     border-radius: var(--mb-radius-lg);
 }
 
-/* 宽屏 Modal（替代 :has + !important） */
+/* 宽屏 Modal（替代 :has + !important）
+   position: relative 作为右下角拖拽手柄的定位锚点（不影响 flex 居中）
+   默认上限 960px × 85vh；用户拖拽自定义尺寸后上限放开到 95vw × 95vh（见下） */
 .modal.mb-wide-modal {
-    max-width: 800px;
+    position: relative;
+    max-width: 960px;
     width: 80vw;
     min-width: 0;
     max-height: 85vh;
     overflow: auto;
 }
 
-/* 用户自定义尺寸（通过 CSS 变量控制） */
+/* 用户自定义尺寸（通过 CSS 变量控制）
+   width/height 带 fallback：变量未定义时回退默认值，避免整条规则失效静默退回 800px/85vh；
+   max-width/max-height 放开到 95vw/95vh，让拖拽上限接近全屏 */
 .modal.mb-wide-modal.mb-size-custom {
-    width: var(--mb-modal-width);
-    height: var(--mb-modal-height);
-    max-width: var(--mb-modal-width);
-    max-height: var(--mb-modal-height);
+    width: var(--mb-modal-width, 80vw);
+    height: var(--mb-modal-height, auto);
+    max-width: 95vw;
+    max-height: 95vh;
 }
 
 /* 用户自定义位置（通过 CSS 变量控制） */
@@ -726,17 +731,13 @@
     user-select: none;
 }
 
-/* 可调整大小的 Modal */
-.modal.mb-resizable {
-    resize: both;
-    overflow: auto;
-}
-
-/* 自定义右下角拖拽手柄 */
+/* 自定义右下角拖拽手柄（唯一尺寸调整入口，宽高都通过 CSS 变量控制，
+   不依赖浏览器原生 resize，避免 max-height 卡死高度） */
 .mb-resize-handle {
     position: absolute;
     bottom: 0;
     right: 0;
+    z-index: 100;
     width: 20px;
     height: 20px;
     cursor: nwse-resize;
@@ -782,6 +783,89 @@
     font-weight: 600;
     font-family: var(--mb-font);
     color: var(--text-normal);
+}
+
+/* 内联编辑弹窗标题栏：整个区域可拖拽移动窗口位置 */
+.mb-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-size: var(--mb-font-size-base);
+    font-weight: 600;
+    font-family: var(--mb-font);
+    color: var(--text-normal);
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+    transition: background var(--mb-transition);
+}
+
+.mb-modal-header:hover {
+    background: var(--background-modifier-hover);
+}
+
+.mb-modal-header-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 抓手图标（三条横线），提示可拖拽 */
+.mb-modal-header-grip {
+    flex-shrink: 0;
+    width: 16px;
+    height: 12px;
+    opacity: 0.45;
+    background: repeating-linear-gradient(
+        180deg,
+        var(--text-muted) 0 2px,
+        transparent 2px 4px
+    );
+    transition: opacity var(--mb-transition);
+}
+
+.mb-modal-header:hover .mb-modal-header-grip {
+    opacity: 0.9;
+}
+
+/* 上下文来源徽标（标题下方：本笔记《xxx》/ 未启用），点击可切换来源 */
+.mb-context-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 12px 20px 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: var(--mb-font-size-xs);
+    font-family: var(--mb-font);
+    color: var(--text-muted);
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--mb-transition), border-color var(--mb-transition), background var(--mb-transition);
+}
+
+.mb-context-badge:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* 已携带本笔记上下文：强调色 + 前置圆点 */
+.mb-context-badge.mb-context-badge-on {
+    color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+}
+
+.mb-context-badge.mb-context-badge-on::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--interactive-accent);
+    flex-shrink: 0;
 }
 
 .mb-section-label {

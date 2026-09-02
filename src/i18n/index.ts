@@ -1,6 +1,7 @@
 import { Lang, locales } from './locales';
 
-export { Lang, LANG_LABELS } from './locales';
+export type { Lang } from './locales';
+export { LANG_LABELS } from './locales';
 
 /**
  * 翻译函数，支持 {key} 占位符替换
@@ -23,7 +24,8 @@ export function t(lang: Lang, key: string, params?: string | Record<string, stri
         }
         if (params) {
             for (const [k, v] of Object.entries(params)) {
-                template = template.replaceAll(`{${k}}`, v);
+                // 不用 replaceAll（target 为 ES2018）
+                template = template.split(`{${k}}`).join(v);
             }
         }
         return template;
