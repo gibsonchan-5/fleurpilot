@@ -31,6 +31,8 @@ export interface FleurPilotSettings {
     provider: string;
     baseUrl: string;
     apiKey: string;
+    /** 密钥保存位置：system=系统钥匙串（默认），vault=data.json 明文随 vault 同步。 */
+    secretStorageMode: 'system' | 'vault';
     model: string;
     reasoningModel: string;
     systemPrompt: string;
@@ -57,6 +59,7 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
     provider: 'deepseek',
     baseUrl: 'https://api.deepseek.com/v1',
     apiKey: '',
+    secretStorageMode: 'system',
     model: 'deepseek-chat',
     reasoningModel: 'deepseek-reasoner',
     systemPrompt: '你是一位专业的写作伙伴，熟悉各类文本的梳理、润色与扩展。请基于用户提供的笔记内容，给出清晰、准确、可直接使用的回复，保持简洁、克制、实用。',
@@ -99,15 +102,34 @@ export class FleurPilotSettingTab extends PluginSettingTab {
     /**
      * 重写 setControlValue：当 provider 变化时自动同步预设的 baseUrl 和 model
      * 声明式 API 的 control 不支持 onChange，通过此方法拦截值变更
+     *
+     * super 会把值写进 plugin.settings 并调用 plugin.saveData —— 后者已被插件重写为
+     * 「写盘前抹掉密钥」，所以这条路径同样不会把明文密钥落进 data.json。
      */
-    setControlValue(key: string, value: unknown): void | Promise<void> {
-        void super.setControlValue(key, value);
+    async setControlValue(key: string, value: unknown): Promise<void> {
+        // 密钥保存位置切换：走完整的搬迁 + 校验 + 回滚流程，而不是直接改值落盘
+        if (key === 'secretStorageMode') {
+            const $ = (k: string, fb?: string) => t(this.plugin.settings.language, k, fb);
+            const mode = value === 'vault' ? 'vault' : 'system';
+            const result = await this.plugin.setSecretStorageMode(mode);
+            if (!result.ok) {
+                new Notice($('notice.secretMoveFailed'));
+            } else if (mode === 'vault') {
+                new Notice($('notice.secretMovedVault'));
+            } else {
+                new Notice($('notice.secretMovedSystem'));
+            }
+            // 重新渲染，让密钥说明回到与实际模式一致的措辞（失败时也会显示回滚后的值）
+            this.update();
+            return;
+        }
+        await super.setControlValue(key, value);
         if (key === 'provider' && typeof value === 'string') {
             const preset = MODEL_PRESETS.find(p => p.id === value);
             if (preset && preset.id !== 'custom') {
                 this.plugin.settings.baseUrl = preset.baseUrl;
                 this.plugin.settings.model = preset.model;
-                void this.plugin.saveSettings();
+                await this.plugin.saveSettings();
                 this.update();
             }
         }
@@ -142,12 +164,37 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                 },
             },
             {
-                name: $('settings.apiKey'),
-                desc: $('settings.apiKeyDesc'),
+                // 密钥保存位置：切换走 setControlValue 拦截里的完整搬迁流程
+                name: $('settings.secretModeName'),
+                desc: this.plugin.secretStorageAvailable
+                    ? $('settings.secretModeDesc')
+                    : $('settings.secretModeUnavailable'),
                 control: {
-                    type: 'text',
-                    key: 'apiKey',
-                    placeholder: $('settings.apiKeyPlaceholder'),
+                    type: 'dropdown',
+                    key: 'secretStorageMode',
+                    options: {
+                        system: $('settings.secretModeOptionSystem'),
+                        vault: $('settings.secretModeOptionVault'),
+                    },
+                },
+            },
+            {
+                name: $('settings.apiKey'),
+                desc: this.secretDesc($),
+                // 声明式设置 API 没有密码型控件，用 render 手动挂一个遮蔽输入框，
+                // 避免密钥在设置界面上以明文显示（写盘仍统一走 plugin.saveSettings）。
+                render: (setting) => {
+                    setting.addText((text) => {
+                        text
+                            .setPlaceholder($('settings.apiKeyPlaceholder'))
+                            .setValue(this.plugin.settings.apiKey)
+                            .onChange(async (value) => {
+                                this.plugin.settings.apiKey = value;
+                                await this.plugin.saveSettings();
+                            });
+                        text.inputEl.type = 'password';
+                        text.inputEl.autocomplete = 'off';
+                    });
                 },
             },
             {
@@ -314,4 +361,15 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         ];
     }
 
+    /**
+     * 描述密钥当前保存在哪里，措辞与「密钥保存位置」设置保持一致。
+     */
+    private secretDesc($: (key: string, fb?: string) => string): string {
+        if (!this.plugin.secretStorageAvailable) {
+            return $('settings.apiKeyDescUnavailable');
+        }
+        return this.plugin.secretBackend === 'system'
+            ? $('settings.apiKeyDescSystem')
+            : $('settings.apiKeyDescVault');
+    }
 }

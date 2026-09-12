@@ -5,6 +5,14 @@ import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
 import { WritingAssistantModal, WritingTask } from './modals/writing-assistant';
 import { t } from './i18n';
+import {
+    hydrateSecrets,
+    scrubSecretsForPersistence,
+    secretStorageAvailable,
+    migrateSecrets,
+    resolveBackend,
+    type SecretBackend,
+} from './secret-store';
 
 /** 自定义输入 Modal — 美化版 */
 class CustomInputModal extends Modal {
@@ -91,6 +99,13 @@ class CustomInputModal extends Modal {
 
 export default class FleurPilotPlugin extends Plugin {
     settings!: FleurPilotSettings;
+    /** 本机 Obsidian 是否支持官方 SecretStorage（系统钥匙串）。 */
+    secretStorageAvailable = false;
+
+    /** 当前实际生效的密钥后端（system=钥匙串，vault=data.json 明文）。 */
+    get secretBackend(): SecretBackend {
+        return resolveBackend(this.app, this.settings.secretStorageMode);
+    }
 
     /** i18n helper */
     $ = (key: string, fb?: string) => t(this.settings.language, key, fb);
@@ -288,10 +303,67 @@ export default class FleurPilotPlugin extends Plugin {
             ...DEFAULT_SETTINGS,
             ...(data ?? {}),
         };
+
+        // API Key 存入系统钥匙串；磁盘上若还留有明文，在这里迁走并清掉。
+        // 用户切到 data.json 模式时则反其道行之：文件即真相，不写钥匙串。
+        this.secretStorageAvailable = secretStorageAvailable(this.app);
+        const secretState = await hydrateSecrets(
+            this.app,
+            this.settings as unknown as Record<string, unknown>,
+            data as Record<string, unknown> | undefined,
+            this.secretBackend,
+        );
+        if (secretState.migrated.length > 0) {
+            await this.saveSettings();
+            new Notice(this.$('notice.apiKeyMoved', 'API Key 已移入系统钥匙串，data.json 中不再保存明文'));
+        }
+    }
+
+    /**
+     * 所有落盘路径的总闸门。
+     *
+     * Obsidian 1.13 的声明式设置框架（PluginSettingTab.setControlValue）会直接调用
+     * plugin.saveData(plugin.settings) 落盘，绕过插件的 saveSettings()。只有在这里
+     * 统一处理，才能保证任何写入路径都不会把明文写进 data.json —— 钥匙串模式下
+     * 写盘前抹掉密钥；data.json 模式下原样落盘（明文正是用户的选择）。
+     */
+    async saveData(data: unknown): Promise<void> {
+        const payload = (data ?? {}) as Record<string, unknown>;
+        await super.saveData(await scrubSecretsForPersistence(this.app, payload, this.secretBackend));
     }
 
     async saveSettings() {
+        // 密钥只写系统钥匙串；saveData 会在写盘前从副本里抹掉（钥匙串不可用时保留明文，避免丢密钥）
         await this.saveData(this.settings);
+    }
+
+    /**
+     * 切换密钥保存位置并搬迁现有密钥。
+     *
+     * 搬入钥匙串逐字段校验；任何一步写不进去就回滚到原模式，
+     * 宁可维持明文也不丢密钥。
+     */
+    async setSecretStorageMode(
+        mode: 'system' | 'vault',
+    ): Promise<{ ok: boolean; failed: string[] }> {
+        const previous = this.settings.secretStorageMode;
+        const target = resolveBackend(this.app, mode);
+
+        this.settings.secretStorageMode = mode;
+        const result = await migrateSecrets(
+            this.app,
+            this.settings as unknown as Record<string, unknown>,
+            target,
+        );
+
+        if (!result.ok) {
+            this.settings.secretStorageMode = previous;
+            await this.saveSettings();
+            return { ok: false, failed: [...result.failed] };
+        }
+
+        await this.saveSettings();
+        return { ok: true, failed: [] };
     }
 
     async activateChatView(newChat = false) {
