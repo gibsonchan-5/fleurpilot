@@ -1,9 +1,9 @@
 {
   "id": "fleurpilot",
   "name": "FleurPilot",
-  "version": "1.7.7",
+  "version": "1.7.8",
   "minAppVersion": "1.13.0",
   "description": "AI writing companion with deep thinking mode and optional web search (Qwen/DashScope)." ,
   "author": "gibsonchan-5",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }

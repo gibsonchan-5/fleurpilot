@@ -47,21 +47,21 @@ Compared to Copilot-style plugins, FleurPilot is designed around how Chinese use
 
 ### Installation
 
-**Option A — Download the bundle (recommended):**
+> **Desktop only.** This plugin requires the desktop app (Windows / macOS / Linux); it is not available on iOS or Android.
 
-1. Download `fleurpilot-1.0.2.zip` from [Releases](https://github.com/gibsonchan-5/fleurpilot/releases)
-2. Extract the zip — you'll get a `fleurpilot/` folder containing `main.js`, `styles.css`, and `manifest.json`
-3. Move the `fleurpilot/` folder into your vault's `.obsidian/plugins/` directory
-4. Open Obsidian → Settings → Community Plugins → Enable "FleurPilot"
-5. Go to plugin settings and enter your API Key
+**Option A — Manual installation (recommended):**
 
-**Option B — Manual installation:**
-
-1. Download `main.js`, `styles.css`, and `manifest.json` from [Releases](https://github.com/gibsonchan-5/fleurpilot/releases)
+1. Download `main.js`, `styles.css`, and `manifest.json` from the [latest release](https://github.com/gibsonchan-5/fleurpilot/releases/latest)
 2. Create a folder named `fleurpilot` inside your vault's `.obsidian/plugins/` directory
 3. Place the three files into that folder
 4. Open Obsidian → Settings → Community Plugins → Enable "FleurPilot"
 5. Go to plugin settings and enter your API Key
+
+**Option B — Via the Community Plugins browser:**
+
+1. Open Obsidian → Settings → Community Plugins → Turn off Restricted Mode
+2. Browse and search for **FleurPilot**, install, then enable
+3. Go to plugin settings and enter your API Key
 
 ### Build from Source
 
@@ -111,21 +111,21 @@ npm run build
 
 ### 安装
 
-**方式 A — 一键打包下载（推荐）：**
+> **仅支持桌面端。** 本插件需要桌面版 Obsidian（Windows / macOS / Linux），iOS 与 Android 不提供。
 
-1. 从 [Releases](https://github.com/gibsonchan-5/fleurpilot/releases) 下载 `fleurpilot-1.0.2.zip`
-2. 解压后会得到一个 `fleurpilot/` 文件夹，里面包含 `main.js`、`styles.css`、`manifest.json` 三个文件
-3. 把 `fleurpilot/` 文件夹整个移动到 vault 的 `.obsidian/plugins/` 目录下
-4. 打开 Obsidian → 设置 → 社区插件 → 启用「FleurPilot（传彩笔AI）」
-5. 进入插件设置，填入 API Key
+**方式 A — 手动安装（推荐）：**
 
-**方式 B — 手动安装：**
-
-1. 从 [Releases](https://github.com/gibsonchan-5/fleurpilot/releases) 下载 `main.js`、`styles.css`、`manifest.json` 三个文件
+1. 从 [最新 Release](https://github.com/gibsonchan-5/fleurpilot/releases/latest) 下载 `main.js`、`styles.css`、`manifest.json` 三个文件
 2. 在 vault 的 `.obsidian/plugins/` 目录下创建 `fleurpilot` 文件夹
 3. 将三个文件放入该文件夹
 4. 打开 Obsidian → 设置 → 社区插件 → 启用「FleurPilot（传彩笔AI）」
 5. 进入插件设置，填入 API Key
+
+**方式 B — 通过社区插件浏览安装：**
+
+1. 打开 Obsidian → 设置 → 社区插件 → 关闭「受限模式」
+2. 浏览并搜索 **FleurPilot**，安装后启用
+3. 进入插件设置，填入 API Key
 
 ### 从源码构建
 
