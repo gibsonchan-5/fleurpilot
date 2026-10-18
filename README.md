@@ -28,6 +28,7 @@ Compared to Copilot-style plugins, FleurPilot is designed around how Chinese use
 
 - **AI Chat** — Side panel with streaming responses, context-aware (current note / folder / all notes)
 - **Chat / Deep Thinking** — Toggle between quick chat and deep reasoning modes
+- **Optional Web Search** — Chat questions can be answered with live retrieval (Qwen/DashScope only): Auto lets the model decide, Forced always searches
 - **Inline Editing** — Polish, shorten, expand, translate, proofread selected text directly in the editor
 - **Quick Skills** — One-click full-note polish, proofread, and translate (auto-detects Chinese↔English direction)
 - **Writing Assistant** — Full-note review, structure analysis, tone analysis, summary generation
@@ -91,6 +92,7 @@ npm run build
 
 - **AI 对话** — 侧边栏流式对话，支持携带当前笔记 / 文件夹 / 全部笔记作为上下文
 - **Chat / 深度思考** — 一键切换普通对话与深度推理模式
+- **联网检索（可选）** — 聊天提问可联网检索最新信息，仅通义千问（DashScope）引擎支持；智能档由模型判断，强制档每次必搜
 - **侵入式编辑** — 选中文本直接改写（精简、扩写、润色、翻译、校对），编辑器内预览 diff 并应用
 - **快捷技能** — 一键全文润色、智能校对、全文翻译（自动识别中英方向）
 - **写作助手** — 全文审读、结构分析、风格分析、内容摘要
@@ -136,11 +138,11 @@ npm run build
 
 ## ⚠️ Security
 
-API Key is stored locally in your vault's plugin data file (`data.json`). Please keep it safe and do not share with others.
+By default the API Key lives in your **system keychain** via Obsidian's `secretStorage` (setting: *Key storage* → "System keychain (recommended)"), so it never enters the synced `data.json`. Only when the keychain is unavailable — or you deliberately choose the "data.json" option — is it written to the plugin's `data.json` inside your vault; keep that in mind when syncing or sharing the vault.
 
 Note content (including the current note / selected folder notes used as context) is sent **only** to the LLM API endpoint you configure (e.g. DeepSeek, Qwen, GLM, SiliconFlow, or a custom endpoint). No telemetry, analytics, or third-party tracking is included.
 
-> API Key 存储在 vault 的插件数据文件（`data.json`）中，请妥善保管，勿与他人分享。
+> API Key 默认存在**系统钥匙串**（设置项「密钥保存位置」→「系统钥匙串（推荐）」，走 Obsidian 的 `secretStorage`），不会写进会随同步外流的 `data.json`。仅当钥匙串不可用、或你主动改选「data.json（随 vault 同步）」时，才存在库内插件的 `data.json`，此时请注意同步与分享范围。
 >
 > 笔记内容（含作为上下文的当前笔记 / 所选文件夹笔记）**仅**发送至你在设置中配置的 LLM API 地址（如 DeepSeek、通义千问、智谱、硅基流动或自定义端点）。本插件不含任何遥测、统计或第三方追踪代码。
 

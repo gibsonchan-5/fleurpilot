@@ -1,7 +1,7 @@
 // main.ts — FleurPilot 插件入口
-import { App, Plugin, Notice, Editor, Menu, Modal } from 'obsidian';
+import { App, Plugin, Notice, Editor, Menu, Modal, addIcon } from 'obsidian';
 import { FleurPilotSettings, DEFAULT_SETTINGS, FleurPilotSettingTab, applyProviderPreset, MODEL_PRESETS } from './settings';
-import { ChatView, VIEW_TYPE_CHAT } from './views/chat-view';
+import { ChatView, VIEW_TYPE_CHAT, FLEURPILOT_ICON_ID, FLEURPILOT_ICON_SVG } from './views/chat-view';
 import { InlineEditModal, InlineEditAction } from './modals/inline-edit';
 import { WritingAssistantModal, WritingTask } from './modals/writing-assistant';
 import { t } from './i18n';
@@ -113,11 +113,14 @@ export default class FleurPilotPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
+        // 品牌图标：必须在任何视图/ribbon 取用之前注册，否则 getIcon() 拿到空
+        addIcon(FLEURPILOT_ICON_ID, FLEURPILOT_ICON_SVG);
+
         // 注册视图
         this.registerView(VIEW_TYPE_CHAT, (leaf) => new ChatView(leaf, this));
 
         // Ribbon
-        this.addRibbonIcon('pen-tool', this.$('chat.title'), () => { void this.activateChatView(); });
+        this.addRibbonIcon(FLEURPILOT_ICON_ID, this.$('chat.title'), () => { void this.activateChatView(); });
 
         // 基础命令
         this.addCommand({

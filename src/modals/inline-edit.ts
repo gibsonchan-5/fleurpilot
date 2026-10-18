@@ -101,10 +101,11 @@ export class InlineEditModal extends Modal {
         // 延迟恢复上次保存的窗口大小和位置（等 modal 渲染完成）
         setTimeout(() => this.restoreModalSize(), 100);
 
-        // 标题区（整个 header 可拖拽移动窗口位置，右侧抓手图标提示）
+        // 标题区（整个 header 可拖拽移动窗口位置）。用户要求把手放左侧：
+        // DOM 顺序 grip → title，配合 styles.css 的 flex-start + title flex:1
         const headerEl = contentEl.createDiv({ cls: 'mb-modal-header' });
-        headerEl.createSpan({ text: this.label('inline.title'), cls: 'mb-modal-header-title' });
         headerEl.createDiv({ cls: 'mb-modal-header-grip' });
+        headerEl.createSpan({ text: this.label('inline.title'), cls: 'mb-modal-header-title' });
         this.addDragHandle(headerEl);
 
         // 上下文来源提示（点击可切换来源：当前笔记 / 文件夹或笔记 / 不使用）
@@ -527,22 +528,18 @@ export class InlineEditModal extends Modal {
         this.contentEl.empty();
     }
 
-    /** 恢复上次保存的窗口大小和位置（通过 CSS 变量控制，避免静态样式审查） */
+    /** 恢复上次保存的窗口宽度和位置（通过 CSS 变量控制，避免静态样式审查）。
+     *  高度不恢复：卡片高度永远由内容自适应（旧版记忆高度会与内容脱节，
+     *  出现「下面一大片空」），--mb-modal-height 只在旧 data.json 里残留、不再写入。 */
     private restoreModalSize() {
         const saved = this.plugin.settings.inlineEditModalSize;
         if (!saved) return;
 
-        // 限制在 95vw / 95vh 内：避免上次拖出视口的值被 CSS 上限卡回，造成"记不住"的错觉
+        // 限制在 95vw 内：避免上次拖出视口的值被 CSS 上限卡回，造成"记不住"的错觉
         const maxW = Math.round(window.innerWidth * 0.95);
-        const maxH = Math.round(window.innerHeight * 0.95);
 
         if (saved.width) {
             this.modalEl.style.setProperty('--mb-modal-width', `${Math.min(saved.width, maxW)}px`);
-        }
-        if (saved.height) {
-            this.modalEl.style.setProperty('--mb-modal-height', `${Math.min(saved.height, maxH)}px`);
-        }
-        if (saved.width || saved.height) {
             this.modalEl.addClass('mb-size-custom');
         }
         if (saved.top !== undefined && saved.left !== undefined) {
@@ -555,51 +552,44 @@ export class InlineEditModal extends Modal {
         }
     }
 
-    /** 保存当前窗口大小和位置 */
+    /** 保存当前窗口宽度和位置 */
     private saveModalSize() {
         const rect = this.modalEl.getBoundingClientRect();
-        if (rect.width < 480 || rect.height < 360) return;
+        if (rect.width < 480) return;
 
-        // 与 CSS 上限保持一致，只保存 95vw / 95vh 内的值
+        // 与 CSS 上限保持一致，只保存 95vw 内的值
         const maxW = Math.round(window.innerWidth * 0.95);
-        const maxH = Math.round(window.innerHeight * 0.95);
 
         this.plugin.settings.inlineEditModalSize = {
             width: Math.min(Math.round(rect.width), maxW),
-            height: Math.min(Math.round(rect.height), maxH),
             top: Math.round(rect.top),
             left: Math.round(rect.left),
         };
         void this.plugin.saveSettings();
     }
 
-    /** 添加右下角拖拽手柄，支持调整窗口大小 */
+    /** 添加右下角拖拽手柄，只横向调整窗口宽度（高度由内容自适应） */
     private addResizeHandle() {
         const handle = this.modalEl.createDiv({ cls: 'mb-resize-handle' });
-        let startX = 0, startY = 0, startW = 0, startH = 0;
+        let startX = 0, startW = 0;
         let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
         const onMouseDown = (e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
             startX = e.pageX;
-            startY = e.pageY;
             const rect = this.modalEl.getBoundingClientRect();
             startW = rect.width;
-            startH = rect.height;
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         };
 
         const onMouseMove = (e: MouseEvent) => {
-            // 拖拽上限：95vw / 95vh（与 CSS max-width/max-height 一致，手柄不会跑出视口）
+            // 拖拽上限：95vw（与 CSS max-width 一致，手柄不会跑出视口）
             const maxW = Math.round(window.innerWidth * 0.95);
-            const maxH = Math.round(window.innerHeight * 0.95);
             const w = Math.min(Math.max(480, startW + (e.pageX - startX)), maxW);
-            const h = Math.min(Math.max(360, startH + (e.pageY - startY)), maxH);
             // 通过 CSS 变量控制尺寸，规避静态样式审查
             this.modalEl.style.setProperty('--mb-modal-width', `${w}px`);
-            this.modalEl.style.setProperty('--mb-modal-height', `${h}px`);
             this.modalEl.addClass('mb-size-custom');
         };
 

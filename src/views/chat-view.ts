@@ -5,9 +5,28 @@ import {
 } from 'obsidian';
 import type FleurPilotPlugin from '../main';
 import { LLMService, ChatMessage } from '../core/llm-service';
+import { isDashScopeEndpoint } from '../settings';
 import { t, getTimeLocale } from '../i18n';
 
 export const VIEW_TYPE_CHAT = 'fleurpilot-chat-view';
+
+/**
+ * 品牌图标（自绘）。
+ * Obsidian 的 addIcon 对自定义图标固定用 viewBox="0 0 100 100"，且不会注入任何
+ * fill/stroke 属性（内置 Lucide 才带），所以填充属性必须写进内容里，坐标也按 100×100 给。
+ * 造型（1.7.7 起，用户批准吸收真机分叉）：三行文本 + 两个句点 + 一枚星芒——
+ * 「写作」与「AI」各占一半；实心填充比早先的描边花叶在小尺寸下更立得住。
+ */
+export const FLEURPILOT_ICON_ID = 'fleurpilot';
+export const FLEURPILOT_ICON_SVG =
+    '<g fill="currentColor" stroke="none">' +
+    '<rect x="15" y="25" width="35" height="12" rx="6"/>' +
+    '<rect x="15" y="46" width="70" height="12" rx="6"/>' +
+    '<rect x="15" y="67" width="47" height="12" rx="6"/>' +
+    '<circle cx="76" cy="73" r="6"/>' +
+    '<circle cx="90" cy="73" r="6"/>' +
+    '<path d="M77 8Q83 19 94 25Q83 31 77 42Q71 31 60 25Q71 19 77 8Z"/>' +
+    '</g>';
 
 interface ConversationMessage {
     role: 'user' | 'assistant';
@@ -42,11 +61,14 @@ export class ChatView extends ItemView {
 
     // 当前 LLM 服务实例（用于打断生成）
     private currentLLM: LLMService | null = null;
+    /** 档位开着但引擎不支持联网检索时，只提示一次。 */
+    private searchUnsupportedNoticed = false;
 
     // UI 元素
     private messageContainer!: HTMLElement;
     private inputArea!: HTMLTextAreaElement;
     private sendButton!: HTMLButtonElement;
+    private resizeHandle!: HTMLDivElement;
     private contextButton!: HTMLButtonElement;
     private modeButton!: HTMLButtonElement;
     private statusIndicator!: HTMLElement;
@@ -64,7 +86,7 @@ export class ChatView extends ItemView {
 
     getViewType(): string { return VIEW_TYPE_CHAT; }
     getDisplayText(): string { return 'FleurPilot'; }
-    getIcon(): string { return 'pen-tool'; }
+    getIcon(): string { return FLEURPILOT_ICON_ID; }
 
     async onOpen(): Promise<void> {
         const container = this.containerEl.children[1];
@@ -95,7 +117,7 @@ export class ChatView extends ItemView {
 
         // 品牌图标
         const brand = toolbar.createDiv({ cls: 'fleurpilot-brand' });
-        setIcon(brand, 'pen-tool');
+        setIcon(brand, FLEURPILOT_ICON_ID);
 
         // 模式切换
         this.modeButton = toolbar.createEl('button', {
@@ -253,6 +275,12 @@ export class ChatView extends ItemView {
     private createInputArea(container: HTMLElement): void {
         const inputContainer = container.createDiv({ cls: 'fleurpilot-input-container' });
 
+        // 顶边握把：整条上沿 ±8px 都是热区，胶囊只在 hover/聚焦/拖拽中浮现
+        this.resizeHandle = inputContainer.createDiv({
+            cls: 'fleurpilot-resize-handle',
+            attr: { tabindex: '0' },
+        });
+
         this.inputArea = inputContainer.createEl('textarea', {
             cls: 'fleurpilot-input',
             attr: { placeholder: this.$('chat.placeholder'), rows: '3' },
@@ -277,6 +305,79 @@ export class ChatView extends ItemView {
                 void this.sendMessage();
             }
         });
+
+        this.setupComposerResize(inputContainer);
+    }
+
+    /**
+     * 输入框可调高（用户批准吸收真机分叉，1.7.7）。握把在容器顶边，拖高写入
+     * --fp-composer-height 并加 --resized 类；未拖过时不设，交给 textarea 自适应。
+     * 上限受面板高度约束（containerEl.clientHeight - 140），消息区不被挤没。
+     * 复原：双击握把或按 Home；键盘 ↑/↓ 每档 24px；结果存 settings.composerHeight。
+     */
+    private setupComposerResize(inputContainer: HTMLElement): void {
+        const MIN_H = 72;
+        const MAX_H = 480;
+        const fit = (): number => Math.max(MIN_H, Math.min(MAX_H, this.containerEl.clientHeight - 140));
+        const apply = (h: number): void => {
+            const px = Math.max(MIN_H, Math.min(MAX_H, Math.min(h, fit())));
+            inputContainer.classList.add('fleurpilot-input-container--resized');
+            inputContainer.style.setProperty('--fp-composer-height', `${px}px`);
+            this.scrollToBottom();
+        };
+        const reset = (): void => {
+            inputContainer.classList.remove('fleurpilot-input-container--resized');
+            inputContainer.style.removeProperty('--fp-composer-height');
+            this.plugin.settings.composerHeight = undefined;
+            void this.plugin.saveSettings();
+        };
+        const persist = (): void => {
+            const h = inputContainer.getBoundingClientRect().height;
+            if (h > 0) {
+                this.plugin.settings.composerHeight = Math.round(h);
+                void this.plugin.saveSettings();
+            }
+        };
+        let dragging = false;
+        let startH = 0;
+        let startY = 0;
+        const onMove = (e: PointerEvent): void => {
+            if (dragging) apply(startH + startY - e.clientY);
+        };
+        const onEnd = (): void => {
+            if (!dragging) return;
+            dragging = false;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onEnd);
+            document.removeEventListener('pointercancel', onEnd);
+            document.body.classList.remove('fleurpilot-composer-resizing');
+            persist();
+        };
+        this.resizeHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            dragging = true;
+            startH = inputContainer.clientHeight;
+            startY = e.clientY;
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onEnd);
+            document.addEventListener('pointercancel', onEnd);
+            document.body.classList.add('fleurpilot-composer-resizing');
+        });
+        this.resizeHandle.addEventListener('dblclick', reset);
+        this.resizeHandle.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Home') {
+                e.preventDefault();
+                reset();
+                return;
+            }
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            apply(inputContainer.clientHeight + (e.key === 'ArrowUp' ? 24 : -24));
+            persist();
+        });
+        const saved = this.plugin.settings.composerHeight;
+        if (saved != null) apply(saved);
     }
 
     private createStatusIndicator(): void {
@@ -288,7 +389,7 @@ export class ChatView extends ItemView {
     private addWelcomeMessage(): void {
         const welcome = this.messageContainer.createDiv({ cls: 'fleurpilot-welcome' });
         const iconDiv = welcome.createDiv({ cls: 'fleurpilot-welcome-icon' });
-        setIcon(iconDiv, 'pen-tool');
+        setIcon(iconDiv, FLEURPILOT_ICON_ID);
         new Setting(welcome).setName(this.$('chat.welcomeTitle')).setHeading();
         welcome.createEl('p', { cls: 'fleurpilot-welcome-sub', text: this.$('chat.welcomeSub') });
 
@@ -483,9 +584,21 @@ export class ChatView extends ItemView {
             this.rafId = window.requestAnimationFrame(() => { void doReasoningRender(); });
         };
 
+        if (this.plugin.settings.webSearchMode !== 'off'
+            && !isDashScopeEndpoint(this.plugin.settings.baseUrl)
+            && !this.searchUnsupportedNoticed) {
+            this.searchUnsupportedNoticed = true;
+            new Notice(this.$('notice.webSearchUnsupported'));
+        }
+
         try {
             const llm = new LLMService(this.plugin.settings);
             this.currentLLM = llm;
+            // 聊天面板允许联网检索；内联编辑与写作助手不传这个选项（处理的是本地内容）
+            const searchOpts = {
+                webSearch: true,
+                onSearchDegraded: () => { new Notice(this.$('notice.webSearchDegraded')); },
+            };
             await llm.sendMessage(
                 contextMessages,
                 (chunk) => {
@@ -548,6 +661,7 @@ export class ChatView extends ItemView {
                         scheduleReasoningRender();
                     }
                     : undefined,
+                searchOpts,
             );
         } catch (error: unknown) {
             this.isStreaming = false;
@@ -654,7 +768,7 @@ export class ChatView extends ItemView {
         if (role === 'user') {
             avatar.setText(this.$('chat.avatarUser'));
         } else {
-            setIcon(avatar, 'pen-tool');
+            setIcon(avatar, FLEURPILOT_ICON_ID);
         }
 
         const body = messageEl.createDiv({ cls: 'fleurpilot-message-body' });

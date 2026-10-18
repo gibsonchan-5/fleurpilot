@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>fleurpilot ui harness</title>
+<script>
+/* ?css=<href> 可换一份样式表，用来做「同一份 DOM、两份 CSS」的前后对照截图；
+   不传就用仓库里的 ../styles.css。href 里只允许安全字符，避免参数注入到标签里。 */
+document.write('<link rel="stylesheet" href="' +
+    ((new URLSearchParams(location.search).get('css') || '../styles.css').replace(/[<>"'`]/g, '')) + '">');
+</script>
+<style>
+/* 只复刻到「插件样式能看到的那一层」为止：核心布局三层，逐条抄自 Obsidian 1.13 app.css。
+   第三层（.view-content）缺了会假阳性，已实测踩过：插件的根元素就是 .view-content
+   （ItemView 的 contentEl，等价于 containerEl.children[1]，两个插件都这么挂），核心给它
+   12/12/32 的内边距与 overflow:auto —— 不复刻就会量出比真机宽 24px、高 44px 的布局，
+   连 @container 阈值都会整体错位一档（容器的 inline-size 量的是内容盒）。 */
+:root {
+    --background-primary: #ffffff; --background-secondary: #f6f6f4;
+    --background-secondary-alt: #eeece8; --background-modifier-hover: rgb(0 0 0 / 0.045);
+    --background-modifier-border: rgb(0 0 0 / 0.12); --background-modifier-border-hover: rgb(0 0 0 / 0.2);
+    --text-normal: #1f1f1d; --text-muted: #6b6b66; --text-faint: #99998f;
+    --interactive-accent: #2f6fed; --interactive-accent-rgb: 47 111 237;
+    --text-on-accent: #ffffff; --font-text-size: 16px;
+    --shadow-l: 0px 1.8px 7.3px rgba(0,0,0,.071), 0px 6.3px 24.7px rgba(0,0,0,.112), 0px 15px 30px rgba(0,0,0,.112);
+}
+/* Obsidian 核心默认档（与主题明暗无关，modal-background 用 var() 跟随上面的明暗档） */
+:root {
+    --size-4-1: 4px; --size-4-2: 8px; --size-4-3: 12px; --size-4-4: 16px; --size-4-8: 32px;
+    --font-ui-medium: 13px; --font-semibold: 600; --line-height-tight: 1.3;
+    --setting-items-background: transparent; --setting-items-border-width: 0px;
+    --setting-items-border-color: transparent; --setting-items-radius: 8px;
+    --size-4-4: 16px; --modal-background: var(--background-primary); --modal-radius: 16px;
+    --modal-border-width: 1px; --modal-border-color: var(--background-modifier-border);
+    --dialog-width: 520px; --dialog-max-width: 720px; --dialog-max-height: 85vh;
+}
+html.theme-dark {
+    --background-primary: #000000; --background-secondary: #101012;
+    --background-secondary-alt: #17171a; --background-modifier-hover: rgb(255 255 255 / 0.07);
+    --background-modifier-border: rgb(255 255 255 / 0.14); --background-modifier-border-hover: rgb(255 255 255 / 0.24);
+    --text-normal: #e8e8e6; --text-muted: #9a9a95; --text-faint: #6e6e69;
+    --interactive-accent: #2997ff; --interactive-accent-rgb: 41 151 255;
+    --text-on-accent: #ffffff; --font-text-size: 16px;
+    --shadow-l: 0px 1.8px 7.3px rgba(0,0,0,.71), 0px 6.3px 24.7px rgba(0,0,0,.81), 0px 15px 30px rgba(0,0,0,.91);
+}
+html, body { margin: 0; height: 100%; background: var(--background-secondary-alt); }
+/* 核心全局重置：没有它，.view-content 的 12px 内边距会「加宽」而不是「吃进」宽度，
+   container query 就会量到 900 而不是真机上的 876 —— 静默假阳性。 */
+* { box-sizing: border-box; }
+body { font-family: -apple-system, 'SF Pro Text', sans-serif; }
+/* 核心右栏是工作区网格里的一格，真机上高度是确定的（.workspace 是 position:absolute; inset:0）。
+   样机里补这一条是为了跟真机的框一致，别当成「不写就塌」——实测过：不写这条，高度链照样
+   解析到视口高（fullHeight=1），塌的不是它。截图里 composer 下方那条空带是 --screenshot
+   按**窗口**尺寸截、视口比窗口小 87px 造成的，已在 shots.mjs 改用 CDP 视口钉死修掉。 */
+.workspace-split.mod-right-split { width: var(--w, 360px); height: 100%; }
+/* 核心第一层：flex 列 + 100% 高，是 .view-content 百分比高度的参照物 */
+.workspace-leaf-content {
+    width: 100%; height: 100%; overflow: hidden; position: relative;
+    display: flex; flex-direction: column;
+    background: var(--background-primary);
+}
+/* 核心第二层：右栏的 .view-content 高度取满；插件根元素同时也是它 */
+.view-content { width: 100%; height: 100%; overflow: auto; }
+/* 核心第三层：内边距直接压在插件根元素上（插件没有重置它的规则） */
+.workspace-leaf-content .view-content {
+    padding: var(--size-4-3) var(--size-4-3) var(--size-4-8);
+}
+.modal-container { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / .45); z-index: 900; }
+/* 核心 .modal / .modal-content 逐条抄自 Obsidian 1.13 app.css（obsidian.asar 实测），
+   不抄这层就会假阳性：真实 DOM 里 mb-inline-edit-modal 挂在 .modal-content 上，
+   卡片本体是外层 .modal，核心给它 padding: var(--size-4-4) + border + radius。 */
+.modal {
+    background-color: var(--modal-background); border-radius: var(--modal-radius);
+    border: var(--modal-border-width) solid var(--modal-border-color);
+    padding: var(--size-4-4); position: relative; min-height: 100px;
+    width: var(--dialog-width); max-width: var(--dialog-max-width); max-height: var(--dialog-max-height);
+    display: flex; flex-direction: column; overflow: auto; box-sizing: border-box;
+}
+.modal-content { flex: 1 1 auto; font-size: var(--font-ui-medium); }
+/* 核心 .modal-close-button：真机 DOM 里它是 modalEl 的直接子元素
+   （obsidian.asar 实测：this.modalEl.createDiv("modal-close-button mod-raised")），
+   不抄这层就测不出「插件样式到底作用没作用到它」（2026-10-16 实锤插件旧规则
+   .mb-inline-edit-modal .modal-close-button 要求它当后代，永不匹配）。 */
+.modal-close-button {
+    position: absolute; top: var(--size-2-3, 10px); inset-inline-end: var(--size-2-3, 10px);
+    padding: var(--size-2-2, 6px); cursor: pointer; background-color: transparent;
+    display: flex; align-items: center; justify-content: center; border: none;
+}
+.modal-close-button::before { content: '✕'; font-size: 16px; color: var(--text-muted); }
+/* 核心 .setting-item 家族，逐条抄自 obsidian.asar（1.13.x）。
+   欢迎页标题与 Modal 标题走的是 new Setting(...).setHeading()，
+   真实 DOM 是 .setting-item.setting-item-heading > .setting-item-info > .setting-item-name，
+   没有 <h3>。不抄这层，插件 CSS 是否真的作用到标题就测不出来（曾因此漏掉
+   「.fleurpilot-welcome h3」这种永不匹配的死选择器）。 */
+.setting-item {
+    display: flex; align-items: center; row-gap: var(--size-4-3);
+    border-radius: var(--setting-items-radius); background-color: var(--setting-items-background);
+    padding: var(--size-4-4); margin-bottom: var(--size-4-2);
+    border: var(--setting-items-border-width) solid var(--setting-items-border-color);
+}
+.setting-item > *:first-child { margin-inline-end: var(--size-4-4); }
+.setting-item-info { display: flex; flex-direction: column; flex-grow: 1; }
+.setting-item-control { display: flex; align-items: center; flex-grow: 0; flex-shrink: 0; }
+.setting-item-name { color: var(--text-normal); font-size: var(--font-ui-medium); line-height: var(--line-height-tight); }
+.setting-item-heading {
+    padding: 0 var(--size-4-4); flex-wrap: wrap; background-color: transparent;
+    margin-bottom: var(--size-4-4); border-top: none;
+}
+/* 图标描边：Obsidian 的 setIcon 把 fill/stroke 写在元素属性上，样机里统一用 CSS 补齐，
+   免得渲染成「黑块图标」影响视觉判读（不影响任何尺寸断言）。 */
+.svg-icon {
+    fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+/* token 探针：断言必须读「实际解析后的值」，不能读 getPropertyValue 的未替换 token 文本 */
+#fp-probes { position: fixed; left: 0; top: 0; opacity: 0; pointer-events: none; }
+#fp-probes i { display: block; }
+#fp-probe-accent { background: var(--fp-fill-accent-soft); width: 8px; height: 8px; }
+#fp-probe-accent-faint { background: var(--fp-fill-accent-faint); width: 8px; height: 8px; }
+#fp-probe-gutter { width: var(--fp-gutter); height: 4px; }
+#fp-probe-body { font-size: var(--fp-text-body); }
+#fp-probe-ring { box-shadow: var(--fp-ring); width: 8px; height: 8px; }
+#fp-probe-hairline { border-top: var(--fp-hairline); width: 8px; }
+#fp-probe-elev { box-shadow: var(--fp-elev-modal); width: 8px; height: 8px; }
+</style></head>
+<body><div class="workspace-split mod-right-split"><div class="workspace-leaf-content" data-type="fleurpilot-chat-view">
+<div id="stage"></div>
+<div id="fp-probes">
+  <i id="fp-probe-accent"></i><i id="fp-probe-accent-faint"></i><i id="fp-probe-gutter"></i>
+  <i id="fp-probe-body">x</i><i id="fp-probe-ring"></i><i id="fp-probe-hairline"></i><i id="fp-probe-elev"></i>
+</div>
+</div></div>
+<script>
+const q = new URLSearchParams(location.search);
+document.documentElement.className = q.get('theme') === 'dark' ? 'theme-dark' : 'theme-light';
+document.documentElement.style.setProperty('--w', (q.get('w') || '360') + 'px');
+const S = {
+// 视图类界面（chat / welcome）的片段只写「插件根元素里装什么」——根元素是 #stage 本身，
+// 它同时挂 .view-content（核心在真机上给的那个类）与 .fleurpilot-chat-view，见下面的挂载逻辑。
+chat: `
+  <div class="fleurpilot-toolbar">
+    <div class="fleurpilot-brand"><svg class="svg-icon" viewBox="0 0 100 100"><g style="stroke-width:8"><path d="M50 8C74 28 78 60 50 88C22 60 26 28 50 8Z"/><path d="M50 88V30"/></g></svg></div>
+    <button class="fleurpilot-mode-btn"><span class="mb-mode-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="mb-mode-label">Chat</span></button>
+    <button class="fleurpilot-context-btn"><span class="mb-ctx-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span class="mb-ctx-label">敦煌笔记 ▾</span></button>
+    <button class="fleurpilot-toolbar-btn"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+  </div>
+  <div class="fleurpilot-messages">
+    <div class="fleurpilot-message fleurpilot-user">
+      <div class="fleurpilot-avatar">我</div>
+      <div class="fleurpilot-message-body">
+        <div class="fleurpilot-message-header"><span class="fleurpilot-message-role">你</span><span class="fleurpilot-message-time">10:24</span></div>
+        <div class="fleurpilot-message-content"><p>帮我把这段关于敦煌的笔记顺一下，语气克制一点。</p></div>
+      </div>
+    </div>
+    <div class="fleurpilot-message fleurpilot-assistant">
+      <div class="fleurpilot-avatar"><svg class="svg-icon" viewBox="0 0 100 100"><g style="stroke-width:8"><path d="M50 8C74 28 78 60 50 88C22 60 26 28 50 8Z"/><path d="M50 88V30"/></g></svg></div>
+      <div class="fleurpilot-message-body">
+        <div class="fleurpilot-message-header"><span class="fleurpilot-message-role">FleurPilot</span><span class="fleurpilot-message-time">10:24</span></div>
+        <div class="mb-reasoning"><div class="mb-reasoning-toggle"><span class="mb-reasoning-toggle-icon">▾</span><span class="mb-reasoning-toggle-label">思考过程</span></div><div class="mb-reasoning-body"><div class="mb-reasoning-content"><p>先确认时间线，再收敛语气。</p></div></div></div>
+        <div class="fleurpilot-message-content"><p>光绪二十六年六月，道士王圆箓在第16窟清理积沙时意外发现藏经洞。</p><p>斯坦因、伯希和先后带走大批写本。</p><pre><code>1900-06-22  藏经洞开启</code></pre><ul><li>出土文物五万余件</li></ul></div>
+        <div class="fleurpilot-message-actions">
+          <button class="fleurpilot-action-btn" aria-label="保存笔记"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M12 11v6M9 14h6"/></svg></button>
+          <button class="fleurpilot-action-btn" aria-label="复制"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button class="fleurpilot-action-btn" aria-label="重新生成"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fleurpilot-input-container">
+    <div class="fleurpilot-resize-handle" tabindex="0"></div>
+    <textarea class="fleurpilot-input" rows="3" placeholder="输入消息… (↵ 发送, Shift+↵ 换行)"></textarea>
+    <button class="fleurpilot-send-btn" title="发送"><svg class="svg-icon" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+  </div>`,
+welcome: `
+  <div class="fleurpilot-toolbar">
+    <div class="fleurpilot-brand"><svg class="svg-icon" viewBox="0 0 100 100"><g style="stroke-width:8"><path d="M50 8C74 28 78 60 50 88C22 60 26 28 50 8Z"/><path d="M50 88V30"/></g></svg></div>
+    <button class="fleurpilot-mode-btn"><span class="mb-mode-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="mb-mode-label">Chat</span></button>
+    <button class="fleurpilot-context-btn"><span class="mb-ctx-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span class="mb-ctx-label">敦煌笔记 ▾</span></button>
+    <button class="fleurpilot-toolbar-btn"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+  </div>
+  <div class="fleurpilot-messages">
+    <div class="fleurpilot-welcome">
+      <div class="fleurpilot-welcome-icon"><svg class="svg-icon" viewBox="0 0 100 100"><g style="stroke-width:8"><path d="M50 8C74 28 78 60 50 88C22 60 26 28 50 8Z"/><path d="M50 88V30"/></g></svg></div>
+      <div class="setting-item setting-item-heading"><div class="setting-item-info"><div class="setting-item-name">FleurPilot</div><div class="setting-item-description"></div></div><div class="setting-item-control"></div></div>
+      <p class="fleurpilot-welcome-sub">你的 AI 伙伴</p>
+      <div class="fleurpilot-skills-grid">
+        <div class="fleurpilot-skills-row"><button class="fleurpilot-skill-btn">全文润色</button><button class="fleurpilot-skill-btn">智能校对</button></div>
+        <div class="fleurpilot-skills-row"><button class="fleurpilot-skill-btn">全文翻译</button><button class="fleurpilot-skill-btn">全文总结</button></div>
+      </div>
+      <p class="fleurpilot-welcome-hint">选中文本，右键使用FleurPilot</p>
+    </div>
+  </div>
+  <div class="fleurpilot-input-container">
+    <div class="fleurpilot-resize-handle" tabindex="0"></div>
+    <textarea class="fleurpilot-input" rows="3" placeholder="输入消息… (↵ 发送, Shift+↵ 换行)"></textarea>
+    <button class="fleurpilot-send-btn" title="发送"><svg class="svg-icon" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+  </div>`,
+inline: `
+<div class="modal-container"><div class="modal mb-wide-modal">
+  <div class="modal-content mb-inline-edit-modal">
+    <div class="mb-modal-header mb-draggable-header"><div class="mb-modal-header-grip"></div><span class="mb-modal-header-title">润色选中段落</span></div>
+    <div class="mb-context-badge">当前笔记</div>
+    <div class="mb-original-section"><div class="mb-section-label mb-collapsible"><span>原文</span><span class="mb-collapse-arrow">▾</span></div><pre class="mb-original-text">敦煌藏经洞在1900年被发现，后来文物大量外流。</pre></div>
+    <div class="mb-result-section"><div class="mb-loading mb-loading-hidden">生成中…</div><div class="mb-preview">光绪二十六年，道士王圆箓在第16窟清理积沙时，叩开了封闭近千年的藏经洞。</div></div>
+    <div class="mb-follow-up-container"><div class="mb-follow-up-label"><span>继续沟通</span><span class="mb-follow-up-hint">（对改写结果提更多要求）</span></div><div class="mb-follow-up-input-wrap"><textarea class="mb-follow-up-input" placeholder="输入进一步修改要求，例如：再精简一点、换个说法、加上例子..."></textarea></div><div class="mb-follow-up-btn-row"><button class="mb-btn mb-btn-primary">发送</button></div></div>
+    <div class="mb-button-container"><button class="mb-btn mb-btn-cancel">取消</button><button class="mb-btn mb-btn-apply">应用</button></div>
+  </div>
+  <div class="modal-close-button"></div>
+  <div class="mb-resize-handle"></div></div></div>`,
+wa: `
+<div class="modal-container"><div class="modal"><div class="modal-content mb-writing-assistant-modal">
+<div class="setting-item setting-item-heading mb-modal-title"><div class="setting-item-info"><div class="setting-item-name">全文审读</div></div></div>
+<div class="mb-note-info"><div class="mb-note-title">敦煌笔记</div></div>
+<div class="mb-result-container"><div class="mb-loading mb-loading-hidden">生成中…</div><div class="mb-result-content"><p>结构完整，但第二段与首段论点重复。</p><ul><li>建议合并时间线</li></ul></div></div>
+</div></div></div>`,
+ctx: `
+<div class="modal-container"><div class="modal fp-ctx-modal-wide">
+<div class="modal-content fp-ctx-search-modal">
+<div class="fp-ctx-modal-title">选择上下文</div>
+<div class="fp-ctx-search-wrap"><span class="fp-ctx-search-icon"></span><input class="fp-ctx-search-input" placeholder="搜索笔记…"></div>
+<div class="fp-ctx-breadcrumb"><span class="fp-ctx-crumb">AI学习</span><span class="fp-ctx-crumb-separator">/</span></div>
+<div class="fp-ctx-list">
+  <div class="fp-ctx-item fp-ctx-item-selected"><span class="fp-ctx-item-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><div class="fp-ctx-item-text"><span class="fp-ctx-item-name">提示词工程</span><span class="fp-ctx-item-detail">12 篇</span></div><span class="fp-ctx-item-check"><svg class="svg-icon" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg></span></div>
+  <div class="fp-ctx-item"><span class="fp-ctx-item-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg></span><div class="fp-ctx-item-text"><span class="fp-ctx-item-name">读书笔记</span><span class="fp-ctx-item-detail">8 篇</span></div><span class="fp-ctx-item-check"></span></div>
+</div>
+<div class="fp-ctx-btn-row"><button class="fp-ctx-btn fp-ctx-btn-cancel">取消</button><button class="fp-ctx-btn fp-ctx-btn-confirm">确认选择</button></div>
+</div></div></div>`
+};
+const surface = q.get('surface') || 'chat';
+// 挂载：视图类界面的根元素就是 #stage 本身（真机上插件把类挂在自己的 contentEl 上，
+// 那个元素同时也带核心的 .view-content）。Modal 类界面不走视图，只把标记塞进去即可。
+const stage = document.getElementById('stage');
+if (surface === 'chat' || surface === 'welcome') stage.classList.add('view-content', 'fleurpilot-chat-view');
+stage.innerHTML = S[surface] || S.chat;
+// modalw/modalh：模拟 TS 用 setProperty 写入的内联尺寸变量，用来验证拖拽/尺寸记忆没被新 CSS 夹掉
+// 真实 TS 把变量写在 modalEl（外层 .modal）上，这里必须同一节点，否则量到的是假宽度
+if (q.get('modalw')) {
+  const m = document.querySelector('.modal');
+  if (m) { m.style.setProperty('--mb-modal-width', q.get('modalw') + 'px');
+           // modalh 缺省 400（历史默认）；传 200 这种远小于内容高的值可验证
+           // 「高度自适应」——新 CSS 必须无视这个变量按内容撑开
+           m.style.setProperty('--mb-modal-height', (q.get('modalh') || '400') + 'px');
+           m.classList.add('mb-size-custom'); }
+}
+// fs：模拟用户把 Obsidian 基础字号调大（正式库 baseFontSize=21）。必须写在
+// documentElement 上：--fp-text-body 这类「引用它的 :root token」的 var() 替换发生在
+// 定义处（:root），写 body 上来不及参与替换，继承下去的是已解析的旧值（实测踩过）
+if (q.get('fs')) document.documentElement.style.setProperty('--font-text-size', q.get('fs') + 'px');
+</script></body></html>

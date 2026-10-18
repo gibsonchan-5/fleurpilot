@@ -9,3 +9,5 @@ package-lock.json
 main.js
 data.json
 *.js.map
+# 内部计划/规格文档（含执行记录与截图），不入公开仓库
+docs/

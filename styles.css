@@ -4,14 +4,52 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
-    --mb-radius-sm: 6px;
-    --mb-radius-md: 10px;
-    --mb-radius-lg: 14px;
-    --mb-radius-xl: 20px;
+    /* ═══ 刻度层：唯一取值来源（Task 2）═══ */
+    --fp-radius-chip: 999px;
+    --fp-radius-md: 8px;
+    --fp-radius-lg: 14px;
+    --fp-radius-none: 0;
+
+    --fp-space-1: 4px;
+    --fp-space-2: 8px;
+    --fp-space-3: 12px;
+    --fp-space-4: 16px;
+    --fp-space-5: 24px;
+    --fp-gutter: clamp(12px, 4vw, 20px);
+
+    --fp-text-xs: 12px;
+    --fp-text-sm: 13px;
+    --fp-text-body: var(--font-text-size, 15px);
+    --fp-text-lg: 15px;
+    --fp-text-display: 28px;   /* 欢迎页主标题（Qoderian 式大号轻衬线）与 Modal 头部装饰字形 */
+
+    /* 宽栏下正文的阅读宽度上限：靠 .fleurpilot-messages 的水平内边距把整列推回中间，
+       而不是给单条消息加 max-width —— 那样 auto 外边距会把右对齐的用户气泡拽回中间 */
+    --fp-reading-width: 720px;
+
+    --fp-hairline: 0.5px solid var(--background-modifier-border);
+    --fp-fill-hover: var(--background-modifier-hover);
+    /* ⚠ 带 color-mix 的值不许走 :root token 中转（用户气泡灰那次踩过：真机 Chromium
+       会把「值里带 color-mix 的 :root 自定义属性」整条丢弃，var() 链空、算出透明，
+       而 headless Chrome 142 里一切正常——样机测不出）。必须把函数内联进使用它的规则，
+       Qoderian 也是这么干的（它整个文件零 :root）。accent-soft/faint/ring 是历史遗留，
+       尚未内联。 */
+    --fp-fill-accent-soft: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+    --fp-fill-accent-faint: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
+    /* 投影取主题原生变量（基线主题对 --shadow-l 有明暗两套定义），不自写黑色 */
+    --fp-elev-modal: var(--shadow-l);
+    /* ring 走 box-shadow 实现（不是 outline），值为投影形式 */
+    --fp-ring: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+
+    /* ═══ 旧 token 重定向：漏改的引用自动落到新档 ═══ */
+    --mb-radius-sm: var(--fp-radius-md);
+    --mb-radius-md: var(--fp-radius-lg);
+    --mb-radius-lg: var(--fp-radius-lg);
+    --mb-radius-xl: var(--fp-radius-chip);
+    --mb-font-size-xs: var(--fp-text-xs);
+    --mb-font-size-sm: var(--fp-text-sm);
+    --mb-font-size-base: var(--fp-text-body);
     --mb-transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
-    --mb-font-size-base: 15px;
-    --mb-font-size-sm: 13px;
-    --mb-font-size-xs: 12px;
     --mb-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', sans-serif;
     --mb-mono: 'SF Mono', 'SF Mono Square', 'Fira Code', 'JetBrains Mono', monospace;
 }
@@ -33,15 +71,21 @@
     background: var(--background-primary);
     font-family: var(--mb-font);
     color: var(--text-normal);
+    container-type: inline-size;
+    container-name: fpchat;
 }
 
-/* ── 工具栏 ── */
+/* ── 工具栏：对齐 Qoderian 的 header ──
+   无下边框（和正文同底，靠留白分隔而不是画线），按钮一律「幽灵」形态：
+   透明底 + 无描边，默认 --text-muted，悬停才升到 --text-normal 并给一层 hover 填充。 */
 .fleurpilot-toolbar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--background-modifier-border);
+    gap: var(--fp-space-1);
+    /* Qoderian 的头部是 padding: 0 12px 12px —— 没有上内边距，控件紧贴内容盒顶端；
+       外面那 12px 由核心 .view-content 给（插件根元素就是它）。跟着抄，别自己加一档。 */
+    padding: 0 var(--fp-space-3) var(--fp-space-3);
+    border-bottom: none;
     background: var(--background-primary);
     flex-shrink: 0;
     overflow: hidden;
@@ -58,14 +102,14 @@
 }
 
 .fleurpilot-brand {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
+    color: var(--text-normal);
     flex-shrink: 0;
-    opacity: 0.85;
+    opacity: 1;
 }
 
 .fleurpilot-brand svg {
@@ -74,6 +118,7 @@
 }
 
 .fleurpilot-toolbar-btn {
+    min-height: 28px;
     width: 28px;
     height: 28px;
     display: flex;
@@ -81,11 +126,11 @@
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: var(--mb-radius-sm);
-    color: var(--text-muted);
+    border-radius: var(--fp-radius-md);
+    color: var(--text-faint);
     cursor: pointer;
     transition: background var(--mb-transition), color var(--mb-transition), transform 80ms ease;
-    padding: 0;
+    padding: 0 var(--fp-space-1);
     flex-shrink: 0;
 }
 
@@ -104,34 +149,33 @@
 }
 
 .fleurpilot-context-btn {
-    font-size: var(--mb-font-size-sm);
-    padding: 5px 12px 5px 10px;
-    border: 0.5px solid var(--background-modifier-border);
-    border-radius: 100px;
-    background: var(--background-secondary);
+    font-size: var(--fp-text-sm);
+    min-height: 28px;
+    padding: var(--fp-space-1) var(--fp-space-2);
+    border: none;
+    border-radius: var(--fp-radius-md);
+    background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    transition: all var(--mb-transition);
+    transition: background var(--mb-transition), color var(--mb-transition);
     font-family: var(--mb-font);
     flex: 0 1 auto;
     min-width: 0;
     max-width: 46%;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--fp-space-1);
     position: relative;
-    font-weight: 500;
 }
 
 .fleurpilot-context-btn:hover {
-    border-color: var(--background-modifier-border-hover);
     color: var(--text-normal);
-    background: var(--background-modifier-hover);
+    background: var(--fp-fill-hover);
 }
 
 .fleurpilot-context-btn svg {
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
 }
 
@@ -144,31 +188,30 @@
 
 /* ── 模式切换按钮 ── */
 .fleurpilot-mode-btn {
-    font-size: var(--mb-font-size-sm);
-    padding: 5px 12px 5px 10px;
-    border: 0.5px solid var(--background-modifier-border);
-    border-radius: 100px;
-    background: var(--background-secondary);
+    font-size: var(--fp-text-sm);
+    min-height: 28px;
+    padding: var(--fp-space-1) var(--fp-space-2);
+    border: none;
+    border-radius: var(--fp-radius-md);
+    background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    transition: all var(--mb-transition);
+    transition: background var(--mb-transition), color var(--mb-transition);
     font-family: var(--mb-font);
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--fp-space-1);
     flex-shrink: 0;
-    font-weight: 500;
 }
 
 .fleurpilot-mode-btn:hover {
-    border-color: var(--background-modifier-border-hover);
     color: var(--text-normal);
-    background: var(--background-modifier-hover);
+    background: var(--fp-fill-hover);
 }
 
 .fleurpilot-mode-btn svg {
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
 }
 
@@ -185,27 +228,28 @@
 
 .mb-mode-icon svg,
 .mb-ctx-icon svg {
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
 }
 
 /* ── 推理过程 ── */
 .mb-reasoning {
     margin-top: 8px;
     border: 1px solid var(--background-modifier-border);
-    border-radius: var(--mb-radius-md);
+    border-radius: var(--fp-radius-lg);
     overflow: hidden;
 }
 
 .mb-reasoning-toggle {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
+    gap: var(--fp-space-2);
+    min-height: 28px;
+    padding: var(--fp-space-1) var(--fp-space-3);
     background: var(--background-secondary);
     cursor: pointer;
     user-select: none;
-    font-size: var(--mb-font-size-xs);
+    font-size: var(--fp-text-xs);
     color: var(--text-muted);
     transition: background var(--mb-transition);
 }
@@ -215,7 +259,7 @@
 }
 
 .mb-reasoning-toggle-icon {
-    font-size: 10px;
+    font-size: var(--fp-text-xs);
     width: 14px;
     text-align: center;
     flex-shrink: 0;
@@ -237,7 +281,7 @@
 }
 
 .mb-reasoning-content {
-    font-size: var(--mb-font-size-sm);
+    font-size: var(--fp-text-sm);
     line-height: 1.6;
     color: var(--text-muted);
 }
@@ -246,13 +290,26 @@
 .mb-reasoning-content p:first-child { margin-top: 0; }
 .mb-reasoning-content p:last-child { margin-bottom: 0; }
 
-/* ── 消息区域 ── */
+/* ── 消息区域 ──
+   改成 flex 纵列 + gap（Qoderian 的做法）：间距由容器统一给，消息自己不带下外边距。
+   > * 显式 flex-shrink:0 —— 否则纵列里溢出的消息会被压扁而不是撑出滚动条。 */
 .fleurpilot-messages {
     flex: 1;
     min-width: 0;
     overflow: hidden auto;
-    padding: 28px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--fp-space-3);
+    /* 水平内边距归零（Qoderian 的 .qoderian-messages 就是 padding: 12px 0）：
+       用户提问气泡要「一侧顶格」——气泡的右沿得能碰到容器内容边。先前这里的 --fp-gutter
+       把整列统一往内缩了 12–20px，气泡右侧便永远贴不到边。助手正文的左右呼吸不吃容器内边距，
+       改由 .fleurpilot-message-content 自己的内边距给（见下），所以助手文字不贴边、用户气泡贴边。 */
+    padding: var(--fp-space-3) 0;
     scroll-behavior: smooth;
+}
+
+.fleurpilot-messages > * {
+    flex-shrink: 0;
 }
 
 /* 流式期间禁用平滑滚动（替代 JS style 直接赋值） */
@@ -268,17 +325,19 @@
 }
 .fleurpilot-messages::-webkit-scrollbar-thumb {
     background: var(--background-modifier-border);
-    border-radius: 3px;
+    border-radius: var(--fp-radius-chip);
 }
 
 /* ── 欢迎页 ── */
 .fleurpilot-welcome {
+    flex: 1 0 auto;          /* 空状态撑满消息区，把内容真正居中（Qoderian 同款） */
+    min-height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 48px 28px;
+    padding: var(--fp-space-5) var(--fp-gutter);
     animation: mbFadeIn 320ms cubic-bezier(0.2, 0, 0.2, 1);
 }
 
@@ -287,36 +346,45 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Qoderian 的欢迎页只有一句大号轻衬线问候，没有任何图标——品牌已经在上方工具栏里，
+   这里再摆一个强调色方块只会跟主标题抢视觉重心。元素仍在 DOM 里（TS 建的），只是不显示。 */
 .fleurpilot-welcome-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: var(--background-secondary);
-    border: 0.5px solid var(--background-modifier-border);
+    display: none;
+}
+
+/* 欢迎页标题不是 <h3>：addWelcomeMessage 走的是
+   new Setting(welcome).setName(...).setHeading()，真实 DOM 是
+   .setting-item.setting-item-heading > .setting-item-info > .setting-item-name。
+   核心给这层的档位是 padding 0 16px / margin-bottom 16px / font-size --font-ui-medium，
+   不覆盖就会渲染成与副标题同级的 13px 小标签，且被 16px 右外边距整体推偏半格。 */
+.fleurpilot-welcome .setting-item-heading {
+    display: block;
+    padding: 0;
+    margin: 0 0 var(--fp-space-1);
+    border: none;
+    background: transparent;
+}
+
+.fleurpilot-welcome .setting-item-heading .setting-item-info {
+    margin-inline-end: 0;
+    flex-grow: 0;
+}
+
+/* 主标题走 Qoderian 的 welcome-greeting：轻衬线（300）+ 大字号 + --text-muted 灰，
+   是个「排版先行」的问候，而不是一个加粗的标签。 */
+.fleurpilot-welcome .setting-item-heading .setting-item-name {
+    font-family: 'Copernicus', 'Tiempos Headline', 'Tiempos', Georgia, 'Times New Roman', serif;
+    font-size: var(--fp-text-display);
+    font-weight: 300;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
     color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 18px;
-}
-
-.fleurpilot-welcome-icon svg {
-    width: 30px;
-    height: 30px;
-}
-
-.fleurpilot-welcome h3 {
-    font-size: 26px;
-    font-weight: 500;
-    color: var(--text-normal);
-    margin: 0 0 6px;
-    letter-spacing: -0.3px;
 }
 
 .fleurpilot-welcome-sub {
-    font-size: 13px;
+    font-size: var(--fp-text-sm);
     color: var(--text-muted);
-    margin: 0 0 32px;
+    margin: 0 0 var(--fp-space-5);
 }
 
 /* ── 技能按钮 (2×2 网格) ── */
@@ -324,14 +392,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: var(--fp-space-2);
     max-width: 340px;
-    margin: 0 auto 28px;
+    margin: 0 auto var(--fp-space-5);
 }
 
 .fleurpilot-skills-row {
     display: flex;
-    gap: 10px;
+    gap: var(--fp-space-2);
     justify-content: center;
     width: 100%;
 }
@@ -343,11 +411,12 @@
 }
 
 .fleurpilot-skill-btn {
-    padding: 8px 16px;
+    min-height: 30px;
+    padding: var(--fp-space-1) var(--fp-space-4);
     background: var(--background-secondary);
-    border: 0.5px solid var(--background-modifier-border);
-    border-radius: 100px;
-    font-size: var(--mb-font-size-sm);
+    border: var(--fp-hairline);
+    border-radius: var(--fp-radius-chip);
+    font-size: var(--fp-text-xs);
     font-family: var(--mb-font);
     color: var(--text-normal);
     cursor: pointer;
@@ -356,8 +425,9 @@
 }
 
 .fleurpilot-skill-btn:hover {
-    background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border-hover);
+    background: var(--fp-fill-accent-soft);
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
 }
 
 .fleurpilot-skill-btn:active {
@@ -365,84 +435,127 @@
 }
 
 .fleurpilot-welcome-hint {
-    font-size: var(--mb-font-size-xs);
+    font-size: var(--fp-text-xs);
     color: var(--text-faint);
     margin: 0;
 }
 
-/* ── 消息 ── */
+
+/* ═══ 消息：复刻 Qoderian 的平铺模型 ═══
+   只有两个身份信号——对齐（用户靠右）与填充（用户有底色，助手透明通栏）。
+   头像列与角色名都拿掉：Qoderian 的 assistant 消息就是「正文直接躺在底色上」。 */
+.fleurpilot-avatar {
+    display: none;
+}
+
+/* 用户气泡：8px 圆角 + 右下角 0 圆角当「尾巴」，90% 上限后靠右。
+   这里不再挂 padding-right：那是「气泡离右沿留 8px」的来源，与「一侧顶格」直接冲突。
+   留白一律由 .fleurpilot-messages 的块级内边距与 .fleurpilot-message-content 的横向内边距表达。 */
 .fleurpilot-message {
+    position: relative;
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    animation: mbFadeIn 240ms cubic-bezier(0.2, 0, 0.2, 1);
+    gap: var(--fp-space-2);
     min-width: 0;
 }
 
-.fleurpilot-avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    flex-shrink: 0;
-    margin-top: 2px;
+.fleurpilot-user {
+    align-self: flex-end;
+    max-width: 90%;
 }
 
-.fleurpilot-avatar svg {
-    width: 14px;
-    height: 14px;
+.fleurpilot-user .fleurpilot-message-content {
+    /* 用户提问气泡的「灰色打底」。color-mix 必须直接写进规则（不许经 :root token
+       中转，见刻度层注释：真机 Chromium 丢弃值里带 color-mix 的 :root 自定义属性）。
+       跟着主题明暗走：浅色档（底 255 白 / 墨 31 黑）得 172 灰，与 Qoderian 的 30% 黑
+       同档（它印在 246 灰面板上正是 172）；夜间档（底纯黑 / 墨 232 白）得 86 灰，
+       同一个「看得见的灰」。37% 反解自 p = (255-172)/(255-31) ≈ 0.37。
+       不用 --fp-fill-hover：亮度差只有 4.5，是「看不出打底」的旧病根。 */
+    background: color-mix(in srgb, var(--text-normal) 37%, var(--background-primary));
+    border-radius: var(--fp-radius-md);
+    border-end-end-radius: 0;
+    padding: var(--fp-space-2) var(--fp-space-3);
 }
 
-.fleurpilot-user .fleurpilot-avatar {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
+.fleurpilot-assistant .fleurpilot-message-content {
+    background: transparent;
 }
 
-.fleurpilot-assistant .fleurpilot-avatar {
-    background: var(--background-secondary);
-    border: 0.5px solid var(--background-modifier-border);
-    color: var(--text-muted);
-}
-
+/* 助手消息是一条统一内缩的正文列：正文、推理卡（.mb-reasoning 是 body 的直接子元素）、页脚
+   都吃这 12px，左右共用同一根左沿。这段内缩原来由 .fleurpilot-messages 的 --fp-gutter 出；
+   容器水平内边距归零（用户气泡要顶格）之后挪到这一层，于是「填充顶格」与「正文不贴边」
+   同时成立——用户气泡的外壳在下面单独把内缩撤回到 0。
+   与 Qoderian 同构：那边 .qoderian-message 的 padding: 10px 14px 一份 padding 管两种身份，
+   用户那档背景盖住 padding 所以填充照样顶格。 */
 .fleurpilot-message-body {
     flex: 1;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-inline: var(--fp-space-3);
 }
 
+/* 用户气泡的外壳不吃内缩：填充要顶格（气泡的右沿必须碰到容器内容边），
+   文字呼吸由气泡自己的 padding（8px 12px）负责。 */
+.fleurpilot-user .fleurpilot-message-body {
+    padding-inline: 0;
+}
+
+/* 角色名去掉；原来在正文上方的「角色 + 时间」这一行，改挂到正文之后当页脚
+   （order: 2），并且默认隐身、悬停或键盘聚焦才浮出——照抄 Qoderian 的 response-footer。
+   助手消息的页脚留在流里（Qoderian 的 response-footer 也占一行，只是时间 opacity: 0），
+   用户消息的页脚则绝对定位不占版面，见下面那条规则。 */
 .fleurpilot-message-header {
+    order: 2;
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--fp-space-2);
+    margin-top: var(--fp-space-1);
     min-width: 0;
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--mb-transition), visibility var(--mb-transition);
+}
+
+.fleurpilot-message:hover .fleurpilot-message-header,
+.fleurpilot-message:focus-within .fleurpilot-message-header {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 用户气泡下沿那行时间默认不占版面：绝对定位挂到气泡外的行间空隙里——照抄 Qoderian 的
+   .qoderian-user-msg-actions（position: absolute; bottom: -20px; right: 0）。
+   留在流里的话 visibility: hidden 只是隐形、仍然撑着约 20px 的死带，用户消息到助手回复
+   的间距会比 Qoderian 松一整行（约 32px 对 22px）——这正是「message rhythm 发闷」的来源。
+   绝对定位的包含块是 .fleurpilot-message（position: relative），在 .fleurpilot-message-body
+   之外，所以 body 的 overflow: hidden 不会裁掉它。 */
+.fleurpilot-user .fleurpilot-message-header {
+    position: absolute;
+    right: var(--fp-space-2);
+    bottom: calc(-1 * var(--fp-space-3));
+    margin-top: 0;
 }
 
 .fleurpilot-message-role {
-    font-size: var(--mb-font-size-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-    flex-shrink: 0;
+    display: none;
 }
 
 .fleurpilot-message-time {
-    font-size: 11px;
+    font-size: var(--fp-text-xs);
     color: var(--text-faint);
     flex-shrink: 0;
 }
 
 .fleurpilot-message-content {
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     line-height: 1.65;
     color: var(--text-normal);
     word-break: break-word;
     overflow-wrap: anywhere;
+    /* 横向内缩不在这里：改由 .fleurpilot-message-body 统一给（推理卡也要吃同一根左沿），
+       用户气泡则在自己的外壳上把那段内缩撤掉、只留自身 padding。 */
     padding: 4px 0;
     min-width: 0;
     max-width: 100%;
@@ -450,12 +563,7 @@
     -webkit-user-select: text;
 }
 
-/* 流式纯文本显示：保留换行符 */
-.fleurpilot-streaming-text {
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-}
+
 
 .fleurpilot-message-content *,
 .fleurpilot-message-content p,
@@ -473,14 +581,15 @@
 .fleurpilot-message-content h2,
 .fleurpilot-message-content h3,
 .fleurpilot-message-content h4 {
-    margin-top: 16px;
-    margin-bottom: 8px;
+    margin-top: var(--fp-space-4);
+    margin-bottom: var(--fp-space-2);
+    font-size: var(--fp-text-lg);
     font-weight: 600;
     line-height: 1.3;
 }
 
 .fleurpilot-message-content p {
-    margin: 8px 0;
+    margin: var(--fp-space-2) 0;
 }
 
 .fleurpilot-message-content p:first-child { margin-top: 0; }
@@ -488,19 +597,19 @@
 
 .fleurpilot-message-content code {
     background: var(--background-secondary);
-    padding: 2px 5px;
-    border-radius: 4px;
+    padding: 2px var(--fp-space-1);
+    border-radius: var(--fp-radius-md);
     font-family: var(--mb-mono);
     font-size: 0.86em;
 }
 
 .fleurpilot-message-content pre {
     background: var(--background-secondary);
-    padding: 14px;
-    border-radius: var(--mb-radius-md);
+    padding: var(--fp-space-2) var(--fp-space-3);
+    border-radius: var(--fp-radius-md);
     overflow-x: auto;
-    margin: 12px 0;
-    border: 1px solid var(--background-modifier-border);
+    margin: var(--fp-space-3) 0;
+    border: var(--fp-hairline);
 }
 
 .fleurpilot-message-content pre code {
@@ -510,18 +619,18 @@
 
 .fleurpilot-message-content ul,
 .fleurpilot-message-content ol {
-    margin: 8px 0;
-    padding-left: 22px;
+    margin: var(--fp-space-2) 0;
+    padding-left: var(--fp-space-5);
 }
 
 .fleurpilot-message-content li {
-    margin: 4px 0;
+    margin: var(--fp-space-1) 0;
 }
 
 .fleurpilot-message-content blockquote {
     border-left: 2px solid var(--background-modifier-border);
-    padding-left: 14px;
-    margin: 12px 0;
+    padding-left: var(--fp-space-3);
+    margin: var(--fp-space-3) 0;
     color: var(--text-muted);
 }
 
@@ -541,20 +650,29 @@
     color: var(--text-muted);
 }
 
-/* ── 消息操作按钮 ── */
+/* ── 消息操作按钮：绝对定位，和页脚时间同一行的右端（Qoderian 的 response-footer 排布）。
+   注意锚点必须是 bottom 而不是 top —— 外层 .fleurpilot-message-body 是 overflow:hidden，
+   负 top 会被裁掉，负 bottom 不会。 ── */
 .fleurpilot-message-actions {
+    position: absolute;
+    bottom: 0;
+    right: 0;
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 0.5px solid var(--background-modifier-border);
+    gap: var(--fp-space-1);
+    margin: 0;
+    padding: 2px var(--fp-space-1);
+    background: var(--background-primary);
+    border: var(--fp-hairline);
+    border-radius: var(--fp-radius-chip);
+    visibility: hidden;
     opacity: 0;
-    transition: opacity var(--mb-transition);
+    transition: visibility var(--mb-transition), opacity var(--mb-transition);
 }
 
 .fleurpilot-message:hover .fleurpilot-message-actions,
 .fleurpilot-message:focus-within .fleurpilot-message-actions {
+    visibility: visible;
     opacity: 1;
 }
 
@@ -566,7 +684,7 @@
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: var(--mb-radius-sm);
+    border-radius: var(--fp-radius-chip);
     color: var(--text-faint);
     cursor: pointer;
     transition: background var(--mb-transition), color var(--mb-transition), transform 80ms ease;
@@ -587,33 +705,46 @@
     height: 14px;
 }
 
-/* ── 输入区域 ── */
+/* ── 输入区域：Qoderian 的 composer 是「有边框的盒子」而不是「无边框的灰填充块」——
+   形状交给描边，底色还给正文，聚焦时描边加深 + 一圈 ring，不再整块变色。 ── */
 .fleurpilot-input-container {
     display: flex;
     align-items: flex-end;
-    padding: 12px 16px 16px;
-    border-top: 0.5px solid var(--background-modifier-border);
+    /* Qoderian 的 composer 在容器里是通栏的（左右不加自己的外边距），所以它比消息列更宽
+       —— 视觉上由 composer 定框。外面那圈留白由核心 .view-content 的 12/12/32 给。 */
+    margin: 0;
+    padding: var(--fp-space-1);
+    border: 1px solid var(--background-modifier-border);
     background: var(--background-primary);
-    gap: 8px;
+    gap: var(--fp-space-1);
     flex-shrink: 0;
+    border-radius: var(--fp-radius-md);
+    transition: border-color var(--mb-transition), box-shadow var(--mb-transition);
 }
 
 .fleurpilot-input {
     width: 100%;
     resize: none;
     border: none;
-    border-radius: var(--mb-radius-xl);
-    padding: 10px 16px;
-    background: var(--background-secondary);
+    border-radius: 0;
+    padding: var(--fp-space-2);
+    background: transparent;
     color: var(--text-normal);
     font-family: var(--mb-font);
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     line-height: 1.5;
-    height: 80px;
+    min-height: 44px;
+    max-height: 150px;
     transition: background var(--mb-transition), box-shadow var(--mb-transition);
     outline: none;
     overflow-y: auto;
     box-sizing: border-box;
+}
+
+
+.fleurpilot-input-container:focus-within {
+    border-color: var(--background-modifier-border-hover);
+    box-shadow: var(--fp-ring);
 }
 
 .fleurpilot-input::placeholder {
@@ -621,15 +752,20 @@
 }
 
 .fleurpilot-input:focus {
-    background: var(--background-primary);
-    box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
+    background: transparent;
+    box-shadow: none;
 }
 
+/* 发送键：Qoderian 的 composer-action-btn 是 28×28 的圆角方块（不是圆点），
+   实心强调色只给这一个「主操作」。尺寸跟字号走（em）而非写死 px：用户把 Obsidian
+   基础字号调到 21 后全界面放大、唯独这里不动就显得极小。2em/1.125em 在默认 16px 档
+   是 32/18（1.7.7 起按用户真机反馈比 Qoderian 放大一档），21px 档得 42/23.6。 */
 .fleurpilot-send-btn {
-    width: 32px;
-    height: 32px;
+    font-size: var(--fp-text-body);
+    width: 2em;
+    height: 2em;
     border: none;
-    border-radius: 50%;
+    border-radius: var(--fp-radius-md);
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     cursor: pointer;
@@ -638,7 +774,7 @@
     justify-content: center;
     transition: opacity var(--mb-transition), transform 80ms ease, background var(--mb-transition);
     flex-shrink: 0;
-    margin-bottom: 6px;
+    margin-bottom: 0;
 }
 
 .fleurpilot-send-btn:hover {
@@ -656,8 +792,8 @@
 }
 
 .fleurpilot-send-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 1.125em;
+    height: 1.125em;
 }
 
 .fleurpilot-send-btn.streaming svg {
@@ -671,10 +807,10 @@
 
 /* ── 状态指示器 ── */
 .fleurpilot-status {
-    padding: 8px 16px;
+    padding: var(--fp-space-2) var(--fp-space-4);
     background: var(--background-primary);
-    border-top: 0.5px solid var(--background-modifier-border);
-    font-size: var(--mb-font-size-xs);
+    border-top: var(--fp-hairline);
+    font-size: var(--fp-text-xs);
     color: var(--text-muted);
     display: flex;
     align-items: center;
@@ -688,18 +824,24 @@
 
 /* 内联编辑 Modal 宽度通过 JS 设置（避免 :has 和 !important） */
 
+/* 注意：mb-inline-edit-modal 挂在 .modal-content 上（Obsidian 的 contentEl），
+   卡片本体是外层 .modal —— 圆角/投影/内边距必须写在外层，否则核心 .modal 的
+   padding: var(--size-4-4) 会把整块内容往里缩 16px，通栏分区变成「卡中卡」。 */
 .mb-inline-edit-modal {
     padding: 0;
     max-height: 85vh;
     overflow: auto;
-    border-radius: var(--mb-radius-lg);
+    border-radius: var(--fp-radius-lg);
 }
 
 /* 宽屏 Modal（替代 :has + !important）
    position: relative 作为右下角拖拽手柄的定位锚点（不影响 flex 居中）
-   默认上限 960px × 85vh；用户拖拽自定义尺寸后上限放开到 95vw × 95vh（见下） */
+   默认上限 960px × 85vh；用户拖拽自定义尺寸后上限放开到 95vw × 95vh（见下）
+   padding:0 抢掉核心 .modal 的 16px 内边距，让 header 与填充分区真正通栏 */
 .modal.mb-wide-modal {
     position: relative;
+    padding: 0;
+    box-shadow: var(--fp-elev-modal);
     max-width: 960px;
     width: 80vw;
     min-width: 0;
@@ -708,11 +850,12 @@
 }
 
 /* 用户自定义尺寸（通过 CSS 变量控制）
-   width/height 带 fallback：变量未定义时回退默认值，避免整条规则失效静默退回 800px/85vh；
+   只有宽度走变量：高度永远由内容自适应（max-height 封顶 + 内部滚动），
+   记忆高度会与内容高脱节，出现「下面一大片空」；变量 --mb-modal-height
+   仅为旧 data.json 兼容保留在 DOM 上，新 CSS 不再读它。
    max-width/max-height 放开到 95vw/95vh，让拖拽上限接近全屏 */
 .modal.mb-wide-modal.mb-size-custom {
     width: var(--mb-modal-width, 80vw);
-    height: var(--mb-modal-height, auto);
     max-width: 95vw;
     max-height: 95vh;
 }
@@ -731,8 +874,8 @@
     user-select: none;
 }
 
-/* 自定义右下角拖拽手柄（唯一尺寸调整入口，宽高都通过 CSS 变量控制，
-   不依赖浏览器原生 resize，避免 max-height 卡死高度） */
+/* 自定义右下角拖拽手柄（唯一尺寸调整入口，宽度通过 CSS 变量控制，
+   不依赖浏览器原生 resize，避免 max-height 卡死高度；高度自适应后只横向拉） */
 .mb-resize-handle {
     position: absolute;
     bottom: 0;
@@ -740,9 +883,9 @@
     z-index: 100;
     width: 20px;
     height: 20px;
-    cursor: nwse-resize;
+    cursor: ew-resize;
     background: linear-gradient(135deg, transparent 50%, var(--background-modifier-border) 50%, var(--background-modifier-border) 70%, transparent 70%, transparent 80%, var(--background-modifier-border) 80%);
-    border-radius: 0 0 var(--mb-radius-lg) 0;
+    border-radius: 0 0 var(--fp-radius-lg) 0;
     opacity: 0.4;
     transition: opacity 0.2s;
 }
@@ -751,10 +894,18 @@
     opacity: 0.8;
 }
 
-/* 美化 Obsidian 默认关闭按钮 */
-.mb-inline-edit-modal .modal-close-button {
+/* 美化 Obsidian 关闭按钮。选择器必须挂在 .modal.mb-wide-modal 的直接子元素上：
+   真机 DOM 里关闭按钮是 modalEl 的直接子元素（obsidian.asar 实测
+   modalEl.createDiv("modal-close-button mod-raised")），是 .modal-content 的兄弟——
+   旧写法 .mb-inline-edit-modal .modal-close-button 要求它当后代，永不匹配，
+   按钮一直是核心裸样式（这正是「没设置成按钮形式」的根因）。 */
+.modal.mb-wide-modal > .modal-close-button {
     top: 12px;
-    right: 12px;
+    inset-inline-end: 12px;
+    /* 核心 .modal-close-button 自带 padding: var(--size-2-2)；不归零的话
+       content-box 下 28px 名义宽会膨胀到 40px，吃穿 header 的预留区 */
+    padding: 0;
+    box-sizing: border-box;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -765,11 +916,11 @@
     transition: background var(--mb-transition);
 }
 
-.mb-inline-edit-modal .modal-close-button:hover {
+.modal.mb-wide-modal > .modal-close-button:hover {
     background: var(--background-modifier-border);
 }
 
-.mb-inline-edit-modal .modal-close-button svg {
+.modal.mb-wide-modal > .modal-close-button svg {
     width: 14px;
     height: 14px;
     stroke-width: 2;
@@ -779,21 +930,27 @@
     margin: 0;
     padding: 14px 20px;
     border-bottom: 1px solid var(--background-modifier-border);
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     font-weight: 600;
     font-family: var(--mb-font);
     color: var(--text-normal);
 }
 
-/* 内联编辑弹窗标题栏：整个区域可拖拽移动窗口位置 */
+/* 内联编辑弹窗标题栏：整个区域可拖拽移动窗口位置。
+   右内边距在常规 --fp-space-4 之上预留「关闭按钮 28px + 一口气 --fp-space-3」：
+   真机 DOM 里关闭按钮 absolute 盖在 header 右段上方（它是 .modal 的直接子元素，
+   不是 header 的流内成员），不预留的话标题文字会滑进按钮底下坐标重叠。 */
 .mb-modal-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    font-size: var(--mb-font-size-base);
+    justify-content: flex-start;
+    gap: var(--fp-space-3);
+    padding: var(--fp-space-3)
+        calc(var(--fp-space-4) + 28px + var(--fp-space-3))
+        var(--fp-space-3)
+        var(--fp-space-4);
+    border-bottom: var(--fp-hairline);
+    font-size: var(--fp-text-sm);
     font-weight: 600;
     font-family: var(--mb-font);
     color: var(--text-normal);
@@ -808,27 +965,36 @@
 }
 
 .mb-modal-header-title {
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* 抓手图标（三条横线），提示可拖拽 */
+/* 抓手按钮（胶囊形）：三条横线提示可拖拽。从「裸贴在 header 里的渐变纹理」
+   升级成有形状的按钮（hairline 描边 + hover 填充）。用户要求放左侧：
+   DOM 顺序 grip → title（inline-edit.ts onOpen），header flex-start 排布 */
 .mb-modal-header-grip {
     flex-shrink: 0;
-    width: 16px;
-    height: 12px;
-    opacity: 0.45;
-    background: repeating-linear-gradient(
+    width: 40px;
+    height: 24px;
+    border-radius: var(--fp-radius-chip);
+    border: var(--fp-hairline);
+    background-color: transparent;
+    background-image: repeating-linear-gradient(
         180deg,
         var(--text-muted) 0 2px,
         transparent 2px 4px
     );
-    transition: opacity var(--mb-transition);
+    background-size: 16px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background-color var(--mb-transition);
 }
 
-.mb-modal-header:hover .mb-modal-header-grip {
-    opacity: 0.9;
+.mb-modal-header:hover .mb-modal-header-grip,
+.mb-modal-header-grip:hover {
+    background-color: var(--background-modifier-hover);
 }
 
 /* 上下文来源徽标（标题下方：本笔记《xxx》/ 未启用），点击可切换来源 */
@@ -838,8 +1004,8 @@
     gap: 6px;
     margin: 12px 20px 0;
     padding: 3px 10px;
-    border-radius: 999px;
-    font-size: var(--mb-font-size-xs);
+    border-radius: var(--fp-radius-chip);
+    font-size: var(--fp-text-xs);
     font-family: var(--mb-font);
     color: var(--text-muted);
     background: var(--background-secondary);
@@ -869,41 +1035,47 @@
 }
 
 .mb-section-label {
-    font-size: var(--mb-font-size-xs);
-    font-weight: 600;
-    color: var(--text-muted);
+    font-size: var(--fp-text-xs);
+    font-weight: 500;
+    color: var(--text-faint);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    letter-spacing: .03em;
+    margin-bottom: var(--fp-space-2);
     font-family: var(--mb-font);
 }
 
 .mb-original-section {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--background-modifier-border);
+    margin: 0 var(--fp-space-4) var(--fp-space-3);
+    padding: var(--fp-space-3);
+    background: var(--fp-fill-hover);
+    border: none;
+    border-radius: var(--fp-radius-lg);
 }
 
 .mb-original-text {
-    background: var(--background-secondary);
-    padding: 12px;
-    border-radius: var(--mb-radius-md);
-    font-size: var(--mb-font-size-base);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: var(--fp-text-body);
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    border: 1px solid var(--background-modifier-border);
+    border: none;
 }
 
 .mb-result-section {
-    padding: 16px 20px;
+    margin: 0 var(--fp-space-4) var(--fp-space-3);
+    padding: var(--fp-space-3);
+    background: var(--fp-fill-accent-faint);
+    border-radius: var(--fp-radius-lg);
 }
 
 .mb-loading {
     padding: 20px;
     text-align: center;
     color: var(--text-muted);
-    font-size: var(--mb-font-size-sm);
+    font-size: var(--fp-text-sm);
 }
 
 .mb-loading::after {
@@ -924,14 +1096,14 @@
 }
 
 .mb-preview {
-    background: var(--background-secondary);
-    padding: 12px;
-    border-radius: var(--mb-radius-md);
-    font-size: var(--mb-font-size-base);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: var(--fp-text-body);
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    border: 1px solid var(--background-modifier-border);
+    border: none;
 }
 
 .mb-button-container {
@@ -943,19 +1115,20 @@
 }
 
 .mb-btn {
-    padding: 7px 16px;
-    border-radius: var(--mb-radius-sm);
-    border: 1px solid var(--background-modifier-border);
+    min-height: 30px;
+    padding: var(--fp-space-1) var(--fp-space-4);
+    border-radius: var(--fp-radius-chip);
+    border: none;
     cursor: pointer;
-    font-size: var(--mb-font-size-sm);
+    font-size: var(--fp-text-sm);
     font-family: var(--mb-font);
-    transition: all var(--mb-transition);
+    transition: background var(--mb-transition), color var(--mb-transition), opacity var(--mb-transition);
     font-weight: 500;
 }
 
 .mb-btn-cancel {
-    background: var(--background-secondary);
-    color: var(--text-normal);
+    background: transparent;
+    color: var(--text-muted);
 }
 
 .mb-btn-cancel:hover {
@@ -965,160 +1138,49 @@
 .mb-btn-apply {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
-    border-color: var(--interactive-accent);
 }
 
 .mb-btn-apply:hover {
     opacity: 0.92;
 }
 
-/* ═══════════════════════════════════════════════════
-   设置页
-   ═══════════════════════════════════════════════════ */
 
-.mb-settings {
-    padding: 8px 0 32px;
-}
 
-.mb-settings-header {
-    padding: 12px 24px 18px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
 
-.mb-settings-title {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    margin: 0 0 4px;
-    color: var(--text-normal);
-    font-family: var(--mb-font);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
 
-.mb-settings-title-icon {
-    color: var(--text-muted);
-    flex-shrink: 0;
-}
 
-.mb-settings-subtitle {
-    font-size: var(--mb-font-size-sm);
-    color: var(--text-muted);
-    margin: 0;
-    font-family: var(--mb-font);
-}
 
-/* 勾选框样式 */
-.mb-checkbox-control {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.mb-settings-checkbox {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    cursor: pointer;
-    accent-color: var(--interactive-accent);
-}
 
-.mb-settings-section-title {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-muted);
-    margin: 24px 24px 10px;
-    padding: 0;
-    font-family: var(--mb-font);
-}
 
-.mb-settings .setting-item {
-    padding: 12px 24px;
-    border-bottom: none;
-}
 
-.mb-settings .setting-item-name {
-    font-size: var(--mb-font-size-base);
-    font-weight: 500;
-    color: var(--text-normal);
-    font-family: var(--mb-font);
-}
 
-.mb-settings .setting-item-description {
-    font-size: var(--mb-font-size-sm);
-    color: var(--text-muted);
-    padding-top: 3px;
-    font-family: var(--mb-font);
-}
 
-/* 确保 setting-item-control 不会过度挤压控件 */
-.mb-settings .setting-item {
-    display: flex;
-    align-items: center;
-}
-.mb-settings .setting-item-info {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-.mb-settings .setting-item-control {
-    flex: 0 0 auto;
-    min-width: 140px;
-    margin-left: 16px;
-}
 
-.mb-settings .setting-item-control input[type="text"],
-.mb-settings .setting-item-control input[type="password"],
-.mb-settings .setting-item-control textarea,
-.mb-settings .setting-item-control select {
-    border-radius: var(--mb-radius-md);
-    border: 1px solid var(--background-modifier-border);
-    background: var(--background-primary);
-    color: var(--text-normal);
-    font-family: var(--mb-font);
-    font-size: var(--mb-font-size-sm);
-    padding: 6px 10px;
-    transition: border-color var(--mb-transition), box-shadow var(--mb-transition);
-    min-width: 140px;
-    max-width: 220px;
-    text-align: center;
-}
 
-.mb-settings .setting-item-control select {
-    padding-right: 28px;
-    min-width: 140px;
-    max-width: 180px;
-    text-align: center;
-    text-align-last: center;
-}
 
-.mb-settings .setting-item-control input[type="text"]:focus,
-.mb-settings .setting-item-control input[type="password"]:focus,
-.mb-settings .setting-item-control textarea:focus,
-.mb-settings .setting-item-control select:focus {
-    outline: none;
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 0, 122, 255), 0.08);
-}
 
-.mb-settings .setting-item-control textarea {
-    min-height: 80px;
-    line-height: 1.55;
-}
 
-.mb-settings .setting-item-control .slider {
-    border-radius: 2px;
-    background: var(--background-modifier-border);
-}
 
-.mb-settings .setting-item-control .slider::-webkit-slider-thumb {
-    border-radius: 50%;
-    background: var(--interactive-accent);
-    border: none;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ═══════════════════════════════════════════════════
    写作助手 Modal
@@ -1130,7 +1192,7 @@
     width: 90vw;
     max-height: 80vh;
     overflow: auto;
-    border-radius: var(--mb-radius-lg);
+    border-radius: var(--fp-radius-lg);
 }
 
 .mb-note-info {
@@ -1140,43 +1202,19 @@
 }
 
 .mb-note-title {
-    font-size: var(--mb-font-size-sm);
+    font-size: var(--fp-text-sm);
     font-weight: 600;
     color: var(--text-normal);
     font-family: var(--mb-font);
 }
 
-.mb-tab-container {
-    display: flex;
-    gap: 4px;
-    padding: 10px 20px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    overflow-x: auto;
-}
 
-.mb-tab {
-    padding: 5px 12px;
-    border-radius: var(--mb-radius-sm);
-    border: 1px solid var(--background-modifier-border);
-    background: var(--background-primary);
-    color: var(--text-normal);
-    cursor: pointer;
-    font-size: var(--mb-font-size-xs);
-    white-space: nowrap;
-    transition: all var(--mb-transition);
-    font-family: var(--mb-font);
-    font-weight: 500;
-}
 
-.mb-tab:hover {
-    background: var(--background-modifier-hover);
-}
 
-.mb-tab-active {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-color: var(--interactive-accent);
-}
+
+
+
+
 
 .mb-result-container {
     padding: 18px 20px;
@@ -1184,7 +1222,7 @@
 }
 
 .mb-result-content {
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     line-height: 1.65;
     font-family: var(--mb-font);
 }
@@ -1213,8 +1251,8 @@
 
 .mb-result-content code {
     background: var(--background-secondary);
-    padding: 2px 5px;
-    border-radius: 4px;
+    padding: 2px var(--fp-space-1);
+    border-radius: var(--fp-radius-md);
     font-family: var(--mb-mono);
     font-size: 0.86em;
 }
@@ -1222,7 +1260,7 @@
 .mb-result-content pre {
     background: var(--background-secondary);
     padding: 14px;
-    border-radius: var(--mb-radius-md);
+    border-radius: var(--fp-radius-lg);
     overflow-x: auto;
     margin: 12px 0;
     border: 1px solid var(--background-modifier-border);
@@ -1247,57 +1285,15 @@
     display: none;
 }
 
-/* System prompt textarea (replace inline style) */
-.mb-system-prompt-area {
-    min-width: 320px;
-    max-width: 100%;
-    text-align: left;
-    font-family: var(--font-monospace, monospace);
-    font-size: 12px;
-    line-height: 1.55;
-    padding: 10px 12px;
-    resize: vertical;
-}
 
-/* Settings section heading via new Setting().setHeading() */
-.mb-settings .setting-item-heading .setting-item-name {
-    font-size: var(--mb-font-size-base);
-    font-weight: 600;
-    color: var(--text-normal);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin-bottom: 12px;
-    margin-top: 16px;
-}
 
-/* ═══════════════════════════════════════════════════
-   测试连接按钮样式
-═══════════════════════════════════════════════════ */
 
-.mb-test-conn-btn {
-    padding: 8px 16px;
-    border-radius: var(--mb-radius-md);
-    border: none;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    cursor: pointer;
-    font-size: var(--mb-font-size-sm);
-    font-family: var(--mb-font);
-    font-weight: 500;
-    transition: all var(--mb-transition);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
 
-.mb-test-conn-btn:hover:not(:disabled) {
-    opacity: 0.9;
-}
 
-.mb-test-conn-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+
+
+
+
 
 /* ═══════════════════════════════════════════════════
    自定义改写弹窗样式（现代风格）
@@ -1306,7 +1302,7 @@
 .mb-custom-modal {
     max-width: 640px;
     width: 90vw;
-    border-radius: var(--mb-radius-lg);
+    border-radius: var(--fp-radius-lg);
 }
 
 .mb-custom-input-modal {
@@ -1326,13 +1322,13 @@
 }
 
 .mb-custom-header-icon {
-    font-size: 24px;
+    font-size: var(--fp-text-display);
     color: var(--text-accent);
 }
 
 .mb-custom-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fp-text-lg);
     font-weight: 600;
     color: var(--text-normal);
 }
@@ -1347,11 +1343,11 @@
 
 .mb-custom-chip {
     padding: 6px 12px;
-    border-radius: var(--mb-radius-sm);
+    border-radius: var(--fp-radius-md);
     background: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     color: var(--text-muted);
-    font-size: var(--mb-font-size-xs);
+    font-size: var(--fp-text-xs);
     cursor: pointer;
     transition: all var(--mb-transition);
 }
@@ -1373,11 +1369,11 @@
     width: 100%;
     min-height: 120px;
     padding: 12px;
-    border-radius: var(--mb-radius-md);
+    border-radius: var(--fp-radius-lg);
     border: 1px solid var(--background-modifier-border);
     background: var(--background-primary);
     color: var(--text-normal);
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     font-family: var(--mb-font);
     line-height: 1.6;
     resize: vertical;
@@ -1393,20 +1389,9 @@
     color: var(--text-muted);
 }
 
-.mb-custom-hint {
-    font-size: 11px;
-    color: var(--text-faint);
-}
 
-.mb-custom-hint kbd {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    font-size: 10px;
-    font-family: var(--mb-mono);
-}
+
+
 
 .mb-custom-footer {
     display: flex;
@@ -1416,27 +1401,11 @@
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.mb-custom-btn-primary {
-    padding: 8px 16px;
-    border-radius: var(--mb-radius-md);
-    border: none;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    cursor: pointer;
-    font-size: var(--mb-font-size-sm);
-    font-family: var(--mb-font);
-    font-weight: 500;
-    transition: all var(--mb-transition);
-}
 
-.mb-custom-btn-primary:hover:not(:disabled) {
-    opacity: 0.9;
-}
 
-.mb-custom-btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+
+
+
 
 /* ═══════════════════════════════════════════════════
    多轮对话改写弹窗样式
@@ -1461,27 +1430,31 @@
 }
 
 .mb-follow-up-hint {
-    font-size: 12px;
+    font-size: var(--fp-text-xs);
     color: var(--text-faint);
 }
 
 .mb-follow-up-input-wrap {
-    margin-bottom: 10px;
+    margin-bottom: var(--fp-space-3);
+    background: var(--fp-fill-hover);
+    border-radius: var(--fp-radius-lg);
+    padding: var(--fp-space-1) var(--fp-space-2);
+    transition: background var(--mb-transition), box-shadow var(--mb-transition);
 }
 
 .mb-follow-up-input {
     width: 100%;
-    min-height: 80px;
-    padding: 12px;
-    border-radius: var(--mb-radius-md);
-    border: 1px solid var(--background-modifier-border);
-    background: var(--background-primary);
+    min-height: 44px;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent;
     color: var(--text-normal);
-    font-size: var(--mb-font-size-base);
+    font-size: var(--fp-text-body);
     font-family: var(--mb-font);
     line-height: 1.6;
     resize: vertical;
-    transition: border-color var(--mb-transition);
+    transition: color var(--mb-transition);
 }
 
 .mb-follow-up-input:focus {
@@ -1523,15 +1496,16 @@
     display: none;
 }
 
-.mb-original-section.mb-collapsed {
-    display: none;
-}
-
 /* ═══════════════════════════════════════════════════
    上下文选择 Modal（文件夹浏览 + 搜索）
 ═══════════════════════════════════════════════════ */
 
+/* 卡片本体同样是外层 .modal：抢掉核心内边距，列表/按钮行才能通栏。
+   （原 .mb-original-section.mb-collapsed 已删——TS 只把 mb-collapsed 加在
+   .mb-section-label 与 pre.mb-original-text 上，那条规则永远不会命中。） */
 .modal.fp-ctx-modal-wide {
+    padding: 0;
+    box-shadow: var(--fp-elev-modal);
     width: auto;
     min-width: 420px;
     max-width: 560px;
@@ -1568,7 +1542,7 @@
 
 .fp-ctx-modal-title {
     padding: 16px 20px 8px;
-    font-size: 15px;
+    font-size: var(--fp-text-lg);
     font-weight: 600;
     color: var(--text-normal);
 }
@@ -1576,8 +1550,11 @@
 .fp-ctx-search-wrap {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 20px;
+    gap: var(--fp-space-2);
+    min-height: 28px;
+    padding: var(--fp-space-1) var(--fp-space-3);
+    background: var(--fp-fill-hover);
+    border-radius: var(--fp-radius-chip);
 }
 
 .fp-ctx-search-icon {
@@ -1596,10 +1573,10 @@
     flex: 1;
     padding: 8px 12px;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
+    border-radius: var(--fp-radius-chip);
     background: var(--background-secondary);
     color: var(--text-normal);
-    font-size: 14px;
+    font-size: var(--fp-text-sm);
     outline: none;
     transition: border-color 0.2s;
 }
@@ -1619,7 +1596,7 @@
     align-items: center;
     gap: 4px;
     padding: 6px 20px;
-    font-size: 13px;
+    font-size: var(--fp-text-sm);
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
@@ -1630,7 +1607,7 @@
 .fp-ctx-crumb {
     cursor: pointer;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--fp-radius-md);
     color: var(--text-muted);
     transition: background 0.15s, color 0.15s;
 }
@@ -1640,40 +1617,35 @@
     color: var(--text-normal);
 }
 
-.fp-ctx-crumb-current {
-    color: var(--text-normal);
-    font-weight: 500;
-    cursor: default;
-}
 
-.fp-ctx-crumb-current:hover {
-    background: transparent;
-    color: var(--text-normal);
-}
+
+
 
 .fp-ctx-crumb-separator {
     color: var(--text-faint);
-    font-size: 12px;
+    font-size: var(--fp-text-xs);
 }
 
 .fp-ctx-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    gap: var(--fp-space-2);
+    min-height: 30px;
+    padding: var(--fp-space-1) var(--fp-space-2);
+    border-radius: var(--fp-radius-md);
     cursor: pointer;
-    transition: background 0.15s;
-    border: 1px solid transparent;
+    transition: background var(--mb-transition);
+    border: none;
 }
 
 .fp-ctx-item:hover {
     background: var(--background-modifier-hover);
 }
 
+/* 选中态不靠描边（.fp-ctx-item 是无边框填充行），靠填充 + TS 注入的勾图标 svg，
+   所以不违反「不能只用颜色区分状态」；原先那条 border-color 因 border:none 是空写，已删。 */
 .fp-ctx-item-selected {
-    background: rgba(var(--interactive-accent-rgb, 59, 130, 246), 0.08);
-    border-color: var(--interactive-accent);
+    background: var(--fp-fill-accent-faint);
 }
 
 .fp-ctx-item-icon {
@@ -1701,7 +1673,7 @@
 }
 
 .fp-ctx-item-name {
-    font-size: 14px;
+    font-size: var(--fp-text-sm);
     font-weight: 500;
     color: var(--text-normal);
     white-space: nowrap;
@@ -1710,7 +1682,7 @@
 }
 
 .fp-ctx-item-detail {
-    font-size: 12px;
+    font-size: var(--fp-text-xs);
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -1729,32 +1701,11 @@
     height: 16px;
 }
 
-.fp-ctx-item-enter {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    color: var(--text-faint);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
-}
-
-.fp-ctx-item-enter:hover {
-    color: var(--text-normal);
-    background: var(--background-modifier-hover);
-}
-
-.fp-ctx-item-enter svg {
-    width: 14px;
-    height: 14px;
-}
-
 .fp-ctx-empty {
     padding: 32px 20px;
     text-align: center;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--fp-text-sm);
 }
 
 /* 底部按钮 */
@@ -1770,8 +1721,8 @@
 .fp-ctx-btn {
     padding: 8px 20px;
     border: none;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: var(--fp-radius-chip);
+    font-size: var(--fp-text-sm);
     cursor: pointer;
     transition: background 0.15s;
 }
@@ -1799,3 +1750,189 @@
     cursor: not-allowed;
 }
 
+
+/* ═══════════════════════════════════════════════════
+   无障碍：焦点环与动效降级（Task 7）
+   ═══════════════════════════════════════════════════ */
+.fleurpilot-toolbar-btn:focus-visible,
+.fleurpilot-context-btn:focus-visible,
+.fleurpilot-mode-btn:focus-visible,
+.fleurpilot-send-btn:focus-visible,
+.fleurpilot-action-btn:focus-visible,
+.fleurpilot-skill-btn:focus-visible,
+.mb-reasoning-toggle:focus-visible,
+.mb-btn:focus-visible,
+.fp-ctx-btn:focus-visible,
+.fp-ctx-item:focus-visible {
+    outline: none;
+    box-shadow: var(--fp-ring);
+}
+
+/* 文本输入自身不画环，环由外层容器给，避免双层环 */
+.fleurpilot-input:focus-visible,
+.mb-follow-up-input:focus-visible,
+.fp-ctx-search-input:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fleurpilot-welcome,
+    .fleurpilot-message-actions,
+    .fleurpilot-message-header,
+    .fleurpilot-message-time,
+    .mb-reasoning-body,
+    .fleurpilot-toolbar-btn,
+    .fleurpilot-context-btn,
+    .fleurpilot-mode-btn,
+    .fleurpilot-send-btn,
+    .fleurpilot-action-btn,
+    .fleurpilot-skill-btn,
+    .mb-btn,
+    .fp-ctx-item {
+        transition: none;
+        animation: none;
+    }
+
+    .fleurpilot-messages { scroll-behavior: auto; }
+    .fleurpilot-toolbar-btn:active,
+    .fleurpilot-send-btn:active,
+    .fleurpilot-action-btn:active { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════
+   自适应：面板宽度用 @container，Modal 用 @media（Task 8）
+   ═══════════════════════════════════════════════════ */
+
+/* 窄栏：动作条没有 hover 空间，改常驻；上下文标签压宽度而不是隐藏品牌图标 */
+@container fpchat (max-width: 340px) {
+    .fleurpilot-context-btn .mb-ctx-label,
+    .fleurpilot-mode-btn .mb-mode-label { max-width: 72px; }
+    /* 窄栏没有悬停余地，动作条改常驻（锚点不变，仍在页脚时间的右端） */
+    .fleurpilot-message-actions {
+        visibility: visible;
+        opacity: 1;
+    }
+    .fleurpilot-skills-row { flex-wrap: wrap; }
+}
+
+@container fpchat (max-width: 460px) {
+    .fleurpilot-messages { padding-block: var(--fp-space-4); }
+    .fleurpilot-welcome { padding-block: var(--fp-space-4); }
+}
+
+/* 宽栏：把整列推进阅读宽度（左右内边距对称加大），而不是给单条消息加 max-width ——
+   后者会让 auto 外边距把右对齐的用户气泡从右边拽回中间。
+   注意这条只在「面板被拉到极宽」时才生效（容器内容盒 ≥640px，即面板 ≥664px）：侧栏常态下
+   容器内边距是 0，用户气泡照样顶格。这与 ChatGPT/Claude 一致——气泡贴的是「阅读栏」的右沿，
+   窄面板下阅读栏就是整个面板。 */
+@container fpchat (min-width: 640px) {
+    .fleurpilot-messages {
+        padding-inline: max(var(--fp-gutter), calc((100% - var(--fp-reading-width)) / 2));
+    }
+}
+
+/* Modal 相对视口，用 @media 才正确 */
+@media (max-width: 700px) {
+    .mb-modal-header { padding: var(--fp-space-2) var(--fp-space-3); }
+    .mb-original-section, .mb-result-section { margin-inline: var(--fp-space-3); }
+    .mb-button-container { padding: var(--fp-space-2) var(--fp-space-3); }
+}
+
+/* ═══════════════════════════════════════════════════
+   可调高输入框（学 Qoderian 的顶边握把设计）
+   ═══════════════════════════════════════════════════ */
+
+.fleurpilot-input-container {
+    position: relative;
+}
+
+/* 顶边拖拽热区：盖住容器上沿 ±8px */
+.fleurpilot-resize-handle {
+    position: absolute;
+    z-index: 4;
+    top: -8px;
+    left: 0;
+    right: 0;
+    height: 16px;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+/* 胶囊握把：hover / 聚焦 / 拖拽中才浮现，平时不干扰 */
+.fleurpilot-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: clamp(64px, 20%, 192px);
+    height: 6px;
+    box-sizing: border-box;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--fp-radius-chip);
+    background: var(--background-primary);
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.fleurpilot-input-container:hover .fleurpilot-resize-handle::after,
+.fleurpilot-input-container:focus-within .fleurpilot-resize-handle::after,
+.fleurpilot-resize-handle:focus-visible::after,
+body.fleurpilot-composer-resizing .fleurpilot-resize-handle::after {
+    opacity: 1;
+}
+
+.fleurpilot-resize-handle:hover::after,
+.fleurpilot-resize-handle:focus-visible::after,
+body.fleurpilot-composer-resizing .fleurpilot-resize-handle::after {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
+
+.fleurpilot-resize-handle:focus-visible {
+    outline: none;
+}
+
+/* 拖拽期间全局锁定光标与选区 */
+body.fleurpilot-composer-resizing,
+body.fleurpilot-composer-resizing * {
+    cursor: ns-resize !important;
+    user-select: none;
+}
+
+/* 拖拽后的固定高度（由 JS 写入 --fp-composer-height） */
+.fleurpilot-input-container--resized {
+    height: var(--fp-composer-height);
+}
+
+.fleurpilot-input-container--resized .fleurpilot-input {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+}
+
+/* ═══════════════════════════════════════════════════
+   侧边栏底色：Claude 风格暖色基底（用户批准吸收真机分叉，1.7.7）
+   亮色 = 暖米白两档；暗色 = 暖炭黑两档。
+   只在视图作用域内重定义 --background-primary，
+   工具栏 / 消息区 / 输入框 / 握把全部自动跟随。
+   这是本文件唯一允许出现色值字面量的地方，逐行标 gate-allow-color；
+   「颜色只来自主题变量」的铁律在此处按用户真机口味让位，别再往别处加。
+   ═══════════════════════════════════════════════════ */
+
+.theme-light .fleurpilot-chat-view {
+    --background-primary: #faf9f5; /* gate-allow-color */
+    --background-primary-alt: #f0eee6; /* gate-allow-color */
+}
+
+.theme-dark .fleurpilot-chat-view {
+    --background-primary: #262624; /* gate-allow-color */
+    --background-primary-alt: #1f1e1d; /* gate-allow-color */
+}
+
+/* 暗色下 composer 再提亮一档（对齐 Claude 的卡片档） */
+.theme-dark .fleurpilot-chat-view .fleurpilot-input-container {
+    background: #30302e; /* gate-allow-color */
+    border-color: #3f3e3a; /* gate-allow-color */
+}

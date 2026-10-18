@@ -10,21 +10,49 @@ export interface ModelPreset {
     name: string;
     baseUrl: string;
     model: string;
+    /** 切到该引擎时思考模式一并切过去的模型；'' 表示该引擎没有公认的思考模型，不动用户手填的值。 */
+    reasoningModel: string;
 }
 
 export const MODEL_PRESETS: ModelPreset[] = [
-    { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-    { id: 'qwen', name: '通义千问 (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-    { id: 'glm', name: '智谱 (GLM)', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
-    { id: 'siliconflow', name: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'custom', name: '自定义', baseUrl: '', model: '' },
+    { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', reasoningModel: 'deepseek-reasoner' },
+    { id: 'qwen', name: '通义千问 (DashScope)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-flash', reasoningModel: 'qwen-flash' },
+    { id: 'glm', name: '智谱 (GLM)', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', reasoningModel: '' },
+    { id: 'siliconflow', name: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-72B-Instruct', reasoningModel: '' },
+    { id: 'custom', name: '自定义', baseUrl: '', model: '', reasoningModel: '' },
 ];
 
 export interface InlineEditModalSize {
     width: number;
-    height: number;
+    /** @deprecated 高度不再记忆/应用（卡片高度改由内容自适应）；仅为兼容旧 data.json 保留可选 */
+    height?: number;
     top?: number;
     left?: number;
+}
+
+/** 联网检索档位：off=关闭，auto=模型自行判断，forced=每次必搜。 */
+export type WebSearchMode = 'off' | 'auto' | 'forced';
+
+/** DashScope OpenAI 兼容端点的主机名 —— 联网检索（enable_search）只有它能做。 */
+const DASHSCOPE_HOST = 'dashscope.aliyuncs.com';
+
+/**
+ * baseUrl 是否指向 DashScope 兼容端点。
+ * 只按解析出的 hostname 精确比对，不做字符串包含匹配，避免用户自填的
+ * 奇怪地址被误判成「支持联网检索」。
+ */
+export function isDashScopeEndpoint(baseUrl: string): boolean {
+    if (!baseUrl) return false;
+    try {
+        return new URL(baseUrl).hostname === DASHSCOPE_HOST;
+    } catch {
+        return false;
+    }
+}
+
+/** 当前设置下联网检索是否真的可用（档位开着 + 引擎支持）。 */
+export function webSearchUsable(settings: FleurPilotSettings): boolean {
+    return settings.webSearchMode !== 'off' && isDashScopeEndpoint(settings.baseUrl);
 }
 
 export interface FleurPilotSettings {
@@ -35,6 +63,8 @@ export interface FleurPilotSettings {
     secretStorageMode: 'system' | 'vault';
     model: string;
     reasoningModel: string;
+    /** 联网检索档位；仅 DashScope（通义千问）引擎生效。 */
+    webSearchMode: WebSearchMode;
     systemPrompt: string;
     temperature: number;
     maxTokens: number;
@@ -53,15 +83,18 @@ export interface FleurPilotSettings {
     chatHistoryFolder: string;
     language: Lang;
     inlineEditModalSize?: InlineEditModalSize;
+    /** 输入框拖高后的像素高度；未设 = 跟随内容自适应。双击握把或按 Home 清除。 */
+    composerHeight?: number;
 }
 
 export const DEFAULT_SETTINGS: FleurPilotSettings = {
-    provider: 'deepseek',
-    baseUrl: 'https://api.deepseek.com/v1',
+    provider: 'qwen',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKey: '',
     secretStorageMode: 'system',
-    model: 'deepseek-chat',
-    reasoningModel: 'deepseek-reasoner',
+    model: 'qwen-flash',
+    reasoningModel: 'qwen-flash',
+    webSearchMode: 'auto',
     systemPrompt: '你是一位专业的写作伙伴，熟悉各类文本的梳理、润色与扩展。请基于用户提供的笔记内容，给出清晰、准确、可直接使用的回复，保持简洁、克制、实用。',
     temperature: 0.7,
     maxTokens: 4096,
@@ -82,11 +115,20 @@ export const DEFAULT_SETTINGS: FleurPilotSettings = {
 /**
  * 根据当前 provider 从预设中应用 baseUrl 和 model
  * 声明式 API 不支持 onChange 回调,因此通过命令触发该逻辑
+ *
+ * 思考模型一并同步：否则切了引擎、思考模式还停留在上一家的模型名上
+ * （这正是用户遇到的问题——主模型换成千问，思考还写着 deepseek-reasoner）。
+ * 预设没有公认思考模型（reasoningModel 为 ''）时保持用户现值不动。
  */
 export function applyProviderPreset(settings: FleurPilotSettings): FleurPilotSettings {
     const preset = MODEL_PRESETS.find(p => p.id === settings.provider);
     if (preset && preset.id !== 'custom') {
-        return { ...settings, baseUrl: preset.baseUrl, model: preset.model };
+        return {
+            ...settings,
+            baseUrl: preset.baseUrl,
+            model: preset.model,
+            ...(preset.reasoningModel ? { reasoningModel: preset.reasoningModel } : {}),
+        };
     }
     return settings;
 }
@@ -127,8 +169,9 @@ export class FleurPilotSettingTab extends PluginSettingTab {
         if (key === 'provider' && typeof value === 'string') {
             const preset = MODEL_PRESETS.find(p => p.id === value);
             if (preset && preset.id !== 'custom') {
-                this.plugin.settings.baseUrl = preset.baseUrl;
-                this.plugin.settings.model = preset.model;
+                // 与命令「应用当前 provider 预设」走同一个函数，保证两条路径行为一致
+                // （含思考模型一并切换；applyProviderPreset 返回新对象，这里要接回 settings）
+                this.plugin.settings = applyProviderPreset(this.plugin.settings);
                 await this.plugin.saveSettings();
                 this.update();
             }
@@ -152,6 +195,19 @@ export class FleurPilotSettingTab extends PluginSettingTab {
                     type: 'dropdown',
                     key: 'provider',
                     options: presetOptions,
+                },
+            },
+            {
+                name: $('settings.webSearch'),
+                desc: $('settings.webSearchDesc'),
+                control: {
+                    type: 'dropdown',
+                    key: 'webSearchMode',
+                    options: {
+                        off: $('settings.webSearchOptionOff'),
+                        auto: $('settings.webSearchOptionAuto'),
+                        forced: $('settings.webSearchOptionForced'),
+                    },
                 },
             },
             {
